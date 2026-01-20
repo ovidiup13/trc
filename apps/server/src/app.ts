@@ -4,11 +4,25 @@ import type { ArtifactMetadata } from "@trc/storage-core";
 import { Hono, type Context } from "hono";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import { createAuthMiddleware } from "./auth";
+import { createLogger } from "./logger";
 import { createStorageProvider } from "./storage";
 
 export const createApp = (config: TrcConfig): Hono => {
 	const storage = createStorageProvider(config);
+	const logger = createLogger(config.logging.level);
 	const app = new Hono();
+
+	app.use("*", async (context, next) => {
+		const start = performance.now();
+		await next();
+		const durationMs = Math.round(performance.now() - start);
+		logger.info({
+			method: context.req.method,
+			path: context.req.path,
+			status: context.res.status,
+			durationMs,
+		});
+	});
 
 	app.use("*", createAuthMiddleware(config.auth.jwt.secret));
 

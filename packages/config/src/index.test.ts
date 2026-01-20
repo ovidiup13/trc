@@ -19,4 +19,5 @@ test("loads config with server defaults", async () => {
 
 	expect(config.server.host).toBe("0.0.0.0");
 	expect(config.server.port).toBe(3000);
+	expect(config.logging.level).toBe("info");
 });

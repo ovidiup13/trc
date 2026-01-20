@@ -16,6 +16,7 @@
 		"@trc/shared": "workspace:*",
 		"@trc/storage-core": "workspace:*",
 		"hono": "^4.6.0",
-		"jose": "^5.6.0"
+		"jose": "^5.6.0",
+		"pino": "^9.5.0"
 	}
 }

@@ -13,6 +13,10 @@ const authSchema = z.object({
 	}),
 });
 
+const loggingSchema = z.object({
+	level: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]),
+});
+
 const localStorageSchema = z.object({
 	rootDir: z.string().min(1),
 });
@@ -27,7 +31,7 @@ const s3StorageSchema = z.object({
 });
 
 const artifactoryStorageSchema = z.object({
-	baseUrl: z.string().url(),
+	baseUrl: z.url(),
 	repository: z.string().min(1),
 	accessToken: z.string().min(1),
 });
@@ -51,6 +55,9 @@ const configSchema = z.object({
 	server: serverSchema.default({
 		host: "0.0.0.0",
 		port: 3000,
+	}),
+	logging: loggingSchema.default({
+		level: "info",
 	}),
 	auth: authSchema,
 	storage: storageSchema,
