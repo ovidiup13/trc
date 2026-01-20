@@ -1,0 +1,17 @@
+{
+	"name": "@trc/provider-s3",
+	"version": "0.1.0",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"lint": "biome lint .",
+		"format": "biome format --write .",
+		"test": "vitest run --passWithNoTests"
+	},
+	"dependencies": {
+		"@trc/storage-core": "workspace:*"
+	}
+}
