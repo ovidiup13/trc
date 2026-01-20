@@ -1,3 +1,5 @@
+import type { ReadableStream } from "node:stream/web";
+
 export type ArtifactMetadata = {
 	size: number;
 	durationMs?: number;
