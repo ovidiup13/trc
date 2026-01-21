@@ -46,6 +46,14 @@ test("integration flow for artifacts", async () => {
 		expect(statusResponse.status).toBe(200);
 		await expect(statusResponse.json()).resolves.toEqual({ status: "enabled" });
 
+		const v8StatusResponse = await app.request("/v8/artifacts/status", {
+			headers,
+		});
+		expect(v8StatusResponse.status).toBe(200);
+		await expect(v8StatusResponse.json()).resolves.toEqual({
+			status: "enabled",
+		});
+
 		const hash = "abc123";
 		const payload = new TextEncoder().encode("hello");
 		const putResponse = await app.request(`/artifacts/${hash}`, {
@@ -76,13 +84,14 @@ test("integration flow for artifacts", async () => {
 		const buffer = await getResponse.arrayBuffer();
 		expect(new Uint8Array(buffer)).toEqual(payload);
 
+		const missingHash = "deadbeef";
 		const queryResponse = await app.request("/artifacts", {
 			method: "POST",
 			headers: {
 				...headers,
 				"content-type": "application/json",
 			},
-			body: JSON.stringify({ hashes: [hash, "missing"] }),
+			body: JSON.stringify({ hashes: [hash, missingHash] }),
 		});
 		expect(queryResponse.status).toBe(200);
 		await expect(queryResponse.json()).resolves.toEqual({
@@ -91,8 +100,23 @@ test("integration flow for artifacts", async () => {
 				taskDurationMs: 120,
 				tag: "tag",
 			},
-			missing: null,
+			[missingHash]: null,
 		});
+
+		const invalidHashResponse = await app.request("/artifacts/invalid-!", {
+			headers,
+		});
+		expect(invalidHashResponse.status).toBe(400);
+
+		const invalidQueryResponse = await app.request("/artifacts", {
+			method: "POST",
+			headers: {
+				...headers,
+				"content-type": "application/json",
+			},
+			body: JSON.stringify({ hashes: ["invalid-!"] }),
+		});
+		expect(invalidQueryResponse.status).toBe(400);
 
 		const eventsResponse = await app.request("/artifacts/events", {
 			method: "POST",
