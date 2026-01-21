@@ -3,15 +3,18 @@
 	"version": "0.1.0",
 	"type": "module",
 	"bin": {
-		"trc": "./src/index.ts"
+		"trc": "./dist/index.js"
 	},
 	"scripts": {
+		"build": "bun build src/index.ts --outdir dist --target node --format esm --banner '#!/usr/bin/env node'",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome lint .",
-		"format": "biome format --write .",
+		"lint": "biome lint src",
+		"format": "biome format --write src",
 		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
-		"@trc/config": "workspace:*"
+		"@trc/config": "workspace:*",
+		"@trc/server": "workspace:*",
+		"commander": "^12.1.0"
 	}
 }

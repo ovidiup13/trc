@@ -7,32 +7,30 @@
       "devDependencies": {
         "@biomejs/biome": "^1.9.4",
         "bun-types": "^1.3.6",
+        "trc": "workspace:*",
         "turbo": "^2.3.0",
         "typescript": "^5.8.0",
         "vitest": "^2.1.9",
       },
     },
     "apps/server": {
-      "name": "@trc/server",
+      "name": "@trc/server-app",
       "version": "0.1.0",
       "dependencies": {
         "@trc/config": "workspace:*",
-        "@trc/provider-local": "workspace:*",
-        "@trc/shared": "workspace:*",
-        "@trc/storage-core": "workspace:*",
-        "hono": "^4.6.0",
-        "jose": "^5.6.0",
-        "pino": "^9.5.0",
+        "@trc/server": "workspace:*",
       },
     },
     "packages/cli": {
       "name": "trc",
       "version": "0.1.0",
       "bin": {
-        "trc": "./src/index.ts",
+        "trc": "./dist/index.js",
       },
       "dependencies": {
         "@trc/config": "workspace:*",
+        "@trc/server": "workspace:*",
+        "commander": "^12.1.0",
       },
     },
     "packages/config": {
@@ -69,6 +67,20 @@
       "version": "0.1.0",
       "dependencies": {
         "@trc/storage-core": "workspace:*",
+      },
+    },
+    "packages/server": {
+      "name": "@trc/server",
+      "version": "0.1.0",
+      "dependencies": {
+        "@hono/node-server": "^1.13.1",
+        "@trc/config": "workspace:*",
+        "@trc/provider-local": "workspace:*",
+        "@trc/shared": "workspace:*",
+        "@trc/storage-core": "workspace:*",
+        "hono": "^4.6.0",
+        "jose": "^5.6.0",
+        "pino": "^9.5.0",
       },
     },
     "packages/shared": {
@@ -145,6 +157,8 @@
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.21.5", "", { "os": "win32", "cpu": "x64" }, "sha512-tQd/1efJuzPC6rCFwEvLtci/xNFcTZknmXs98FYDfGE4wP9ClFV98nyKrzJKVPMhdDnjzLhdUyMX4PsQAPjwIw=="],
 
+    "@hono/node-server": ["@hono/node-server@1.19.9", "", { "peerDependencies": { "hono": "^4" } }, "sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw=="],
+
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
 
     "@pinojs/redact": ["@pinojs/redact@0.4.0", "", {}, "sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg=="],
@@ -209,7 +223,9 @@
 
     "@trc/provider-s3": ["@trc/provider-s3@workspace:packages/provider-s3"],
 
-    "@trc/server": ["@trc/server@workspace:apps/server"],
+    "@trc/server": ["@trc/server@workspace:packages/server"],
+
+    "@trc/server-app": ["@trc/server-app@workspace:apps/server"],
 
     "@trc/shared": ["@trc/shared@workspace:packages/shared"],
 
@@ -244,6 +260,8 @@
     "chai": ["chai@5.3.3", "", { "dependencies": { "assertion-error": "^2.0.1", "check-error": "^2.1.1", "deep-eql": "^5.0.1", "loupe": "^3.1.0", "pathval": "^2.0.0" } }, "sha512-4zNhdJD/iOjSH0A05ea+Ke6MU5mmpQcbQsSOkgdaUMJ9zTlDTD/GYlwohmIE2u0gaxHYiVHEn1Fw9mZ/ktJWgw=="],
 
     "check-error": ["check-error@2.1.3", "", {}, "sha512-PAJdDJusoxnwm1VwW07VWwUN1sl7smmC3OKggvndJFadxxDRyFJBX/ggnu/KE4kQAB7a3Dp8f/YXC1FlUprWmA=="],
+
+    "commander": ["commander@12.1.0", "", {}, "sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA=="],
 
     "debug": ["debug@4.4.3", "", { "dependencies": { "ms": "^2.1.3" } }, "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA=="],
 

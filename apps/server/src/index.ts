@@ -1,16 +1,13 @@
-import { defaultConfigPath, loadConfig } from "@trc/config";
-import { createApp } from "./app";
+import { loadConfig } from "@trc/config";
+import { startServer } from "@trc/server";
 
-const configPath = process.env.TRC_CONFIG ?? defaultConfigPath;
+const configPath = process.env.TRC_CONFIG;
+if (!configPath) {
+	console.error("Missing config path: TRC_CONFIG");
+	process.exit(1);
+}
+
 const config = await loadConfig(configPath);
-const app = createApp(config);
+const server = await startServer(config);
 
-const server = Bun.serve({
-	hostname: config.server.host,
-	port: config.server.port,
-	fetch: app.fetch,
-});
-
-process.stdout.write(
-	`TRC server running on http://${server.hostname}:${server.port}\n`,
-);
+process.stdout.write(`TRC server running on ${server.url}\n`);

@@ -1,19 +1,53 @@
-# TRC (Turborepo Cache)
+# TRC (Turborepo Remote Cache)
 
-TRC is a self-hosted Turborepo remote cache server implemented in Typescript.
+> ⚠️ This project is under active development. Use at your own risk. Breaking changes may occur. Do not use in production.
 
-It is heavily inspired by [turborepo-remote-cache](https://github.com/ducktors/turborepo-remote-cache) but with the following features:
+TRC is a simple, lightweight, self-hosted [Turborepo Remote Cache](https://turborepo.dev/docs/core-concepts/remote-caching) implementation.
 
-- [ ] Single binary deployment with [Bun](https://bun.sh/)
-- [ ] Config driven via trc.yaml or environment variables
-- [ ] Support for npx / bunx usage to quickly start a cache server
+It supports the following storage providers out of the box:
+
+- [x] Local filesystem
+- [ ] In-memory (for testing purposes)
+- [ ] S3-compatible object storage
+- [ ] Artifactory / JFrog
+- more to come...
+
+This project is heavily inspired by [turborepo-remote-cache](https://github.com/ducktors/turborepo-remote-cache) with additional features:
+
+- [x] Support for npx / bunx usage to quickly start a cache server
+- [x] Config driven via trc.yaml or environment variables
+- [ ] Single binary deployment
 - [ ] Support for multiple storage backends (local filesystem, S3, etc.) via a plugin system
 
-It implements the Turborepo Remote Cache API and targets Node/Bun/Deno-compatible runtimes.
+It implements the [Turborepo Remote Cache OpenAPI specification](https://turborepo.dev/docs/openapi).
 
-> **WIP:** This project is under active development and is purely contributed to by AI agents.
+## Quickstart
 
-## Developing
+Install deps:
 
-- Install dependencies: `bun install`
-- Run validations: `turbo run typecheck lint test format`
+```sh
+bun install
+```
+
+Run the build:
+
+```sh
+bun build
+```
+
+Start the server:
+
+```sh
+npx trc -c apps/server/trc.example.yaml
+```
+
+This starts a TRC server at `http://localhost:3000` using the example config file located at `apps/server/trc.example.yaml`.
+
+## CLI
+
+Options:
+
+- `--config <path>`: Provide the config path either via an option or via `TRC_CONFIG` environment variable.
+- `--print-config`: Print the resolved config with defaults applied.
+- `--check-config`: Validate the config and exit.
+- `--version`: Print the CLI version.
