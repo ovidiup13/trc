@@ -1,17 +1,24 @@
 {
-	"name": "@trc/server-app",
+	"name": "@trc/server",
 	"version": "0.1.0",
 	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
 	"scripts": {
-		"dev": "bun run --hot src/index.ts",
-		"start": "bun run src/index.ts",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome lint .",
 		"format": "biome format --write .",
 		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
+		"@hono/node-server": "^1.13.1",
 		"@trc/config": "workspace:*",
-		"@trc/server": "workspace:*"
+		"@trc/provider-local": "workspace:*",
+		"@trc/shared": "workspace:*",
+		"@trc/storage-core": "workspace:*",
+		"hono": "^4.6.0",
+		"jose": "^5.6.0",
+		"pino": "^9.5.0"
 	}
 }
