@@ -112,6 +112,30 @@ const formatReadIssue = (error: unknown): ConfigIssue[] => {
 	return [{ path: "(file)", message: "Unable to read config file" }];
 };
 
+const parseConfigString = (
+	rawConfig: string,
+	sourceLabel: string,
+): TrcConfig => {
+	let parsed: unknown;
+	try {
+		parsed = parse(rawConfig);
+	} catch (error) {
+		throw new ConfigError(
+			`Invalid YAML in ${sourceLabel}`,
+			formatYamlIssue(error),
+		);
+	}
+
+	try {
+		return configSchema.parse(parsed);
+	} catch (error) {
+		if (error instanceof ZodError) {
+			throw new ConfigError(`Invalid ${sourceLabel}`, formatZodIssues(error));
+		}
+		throw error;
+	}
+};
+
 const readConfigFile = async (filePath: string): Promise<string> => {
 	const deno = getDenoRuntime();
 	if (deno?.readTextFile) {
@@ -121,6 +145,11 @@ const readConfigFile = async (filePath: string): Promise<string> => {
 	const { readFile } = await import("node:fs/promises");
 	return readFile(filePath, "utf-8");
 };
+
+export const parseConfig = (
+	rawConfig: string,
+	sourceLabel = "config",
+): TrcConfig => parseConfigString(rawConfig, sourceLabel);
 
 export const loadConfig = async (filePath: string): Promise<TrcConfig> => {
 	let rawConfig: string;
@@ -133,24 +162,7 @@ export const loadConfig = async (filePath: string): Promise<TrcConfig> => {
 		);
 	}
 
-	let parsed: unknown;
-	try {
-		parsed = parse(rawConfig);
-	} catch (error) {
-		throw new ConfigError(
-			"Invalid YAML in config file",
-			formatYamlIssue(error),
-		);
-	}
-
-	try {
-		return configSchema.parse(parsed);
-	} catch (error) {
-		if (error instanceof ZodError) {
-			throw new ConfigError("Invalid config file", formatZodIssues(error));
-		}
-		throw error;
-	}
+	return parseConfigString(rawConfig, "config file");
 };
 
 export const serializeConfig = (config: TrcConfig): string => stringify(config);

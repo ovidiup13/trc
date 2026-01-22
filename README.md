@@ -47,7 +47,12 @@ This starts a TRC server at `http://localhost:3000` using the example config fil
 
 Options:
 
-- `--config <path>`: Provide the config path either via an option or via `TRC_CONFIG` environment variable.
+- `--config <path>`: Provide the config path either via an option or via `TRC_CONFIG_PATH` environment variable.
 - `--print-config`: Print the resolved config with defaults applied.
 - `--check-config`: Validate the config and exit.
 - `--version`: Print the CLI version.
+
+Environment variables:
+
+- `TRC_CONFIG_PATH`: Path to a config file (same as `--config`).
+- `TRC_CONFIG`: Stringified YAML/JSON config (overrides `TRC_CONFIG_PATH`).
