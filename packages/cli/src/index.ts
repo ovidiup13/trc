@@ -1,15 +1,14 @@
 import { Command } from "commander";
 import type { CommanderError } from "commander";
-import {
-	ConfigError,
-	defaultConfigPath,
-	loadConfig,
-	serializeConfig,
-} from "@trc/config";
+import { ConfigError, serializeConfig } from "@trc/config";
 import { startServer } from "@trc/server";
+import {
+	loadResolvedConfig,
+	resolveConfigInput,
+	type ConfigOptions,
+} from "./config";
 
-type CliOptions = {
-	config?: string;
+type CliOptions = ConfigOptions & {
 	printConfig?: boolean;
 	checkConfig?: boolean;
 };
@@ -80,12 +79,11 @@ const run = async (): Promise<void> => {
 		program.error("--print-config and --check-config cannot be used together");
 	}
 
-	const envConfigPath = process.env.TRC_CONFIG;
-	if (envConfigPath && options.config) {
-		process.stderr.write("Warning: TRC_CONFIG is set; ignoring --config\n");
+	const { input, warnings } = resolveConfigInput(options);
+	for (const warning of warnings) {
+		process.stderr.write(`${warning}\n`);
 	}
-	const configPath = envConfigPath ?? options.config ?? defaultConfigPath;
-	const config = await loadConfig(configPath);
+	const config = await loadResolvedConfig(input);
 
 	if (options.printConfig) {
 		const output = serializeConfig(config);
