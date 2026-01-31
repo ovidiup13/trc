@@ -5,6 +5,7 @@
 	"workspaces": ["apps/*", "packages/*"],
 	"scripts": {
 		"dev": "turbo run dev",
+		"openapi:generate": "openapi-typescript docs/turbo-remote-cache-openapi.json -o packages/shared/src/openapi.ts",
 		"typecheck": "turbo run typecheck",
 		"lint": "turbo run lint",
 		"format": "turbo run format",
@@ -13,6 +14,7 @@
 	"packageManager": "bun@1.3.6",
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
+		"openapi-typescript": "^7.10.1",
 		"trc": "workspace:*",
 		"bun-types": "^1.3.6",
 		"turbo": "^2.3.0",

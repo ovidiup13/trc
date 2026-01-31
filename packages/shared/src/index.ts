@@ -10,3 +10,11 @@ export const createErrorResponse = (
 	code,
 	message,
 });
+
+export type {
+	ApiComponents,
+	ApiPaths,
+	ApiJsonResponse,
+	ApiRequestBody,
+} from "./api-contract";
+export type { components, paths } from "./openapi";
