@@ -32,13 +32,13 @@ bun install
 Run the build:
 
 ```sh
-bun build
+bun run build
 ```
 
 Start the server:
 
 ```sh
-npx trc -c apps/server/trc.example.yaml
+bunx trc -c apps/server/trc.example.yaml
 ```
 
 This starts a TRC server at `http://localhost:3000` using the example config file located at `apps/server/trc.example.yaml`.
@@ -68,6 +68,16 @@ storage:
     forcePathStyle: true
 ```
 
+## Configuration
+
+TRC reads configuration from YAML or JSON and applies environment variable overrides.
+
+- Formats: `.yaml`, `.yml`, `.json`
+- Sources (highest to lowest): `TRC_CONFIG`, `TRC_CONFIG_PATH`, `--config`, `./trc.yaml`
+- Overrides: `TRC_*` for TRC settings, `STORAGE_*` for storage settings
+
+Full details, field reference, and examples live in `docs/configuration.md`.
+
 ## CLI
 
 Options:
@@ -77,7 +87,23 @@ Options:
 - `--check-config`: Validate the config and exit.
 - `--version`: Print the CLI version.
 
+Config formats:
+
+- Config files support `.yaml`, `.yml`, and `.json`.
+
 Environment variables:
 
 - `TRC_CONFIG_PATH`: Path to a config file (same as `--config`).
 - `TRC_CONFIG`: Stringified YAML/JSON config (overrides `TRC_CONFIG_PATH`).
+- `TRC_SERVER_HOST`: Override `server.host`.
+- `TRC_SERVER_PORT`: Override `server.port`.
+- `TRC_LOGGING_LEVEL`: Override `logging.level`.
+- `TRC_AUTH_JWT_SECRET`: Override `auth.jwt.secret`.
+- `TRC_STORAGE_PROVIDER`: Override `storage.provider`.
+- `STORAGE_LOCAL_ROOT_DIR`: Override `storage.local.rootDir`.
+- `STORAGE_S3_ENDPOINT`: Override `storage.s3.endpoint`.
+- `STORAGE_S3_REGION`: Override `storage.s3.region`.
+- `STORAGE_S3_BUCKET`: Override `storage.s3.bucket`.
+- `STORAGE_S3_ACCESS_KEY_ID`: Override `storage.s3.accessKeyId`.
+- `STORAGE_S3_SECRET_ACCESS_KEY`: Override `storage.s3.secretAccessKey`.
+- `STORAGE_S3_FORCE_PATH_STYLE`: Override `storage.s3.forcePathStyle`.

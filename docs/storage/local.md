@@ -13,6 +13,54 @@ storage:
     rootDir: /tmp/cache/turbo
 ```
 
+Environment variables:
+
+- `STORAGE_LOCAL_ROOT_DIR` overrides `storage.local.rootDir`.
+
+## Examples
+
+Full config example (trc.yaml):
+
+```yaml
+server:
+  host: 0.0.0.0
+  port: 3000
+logging:
+  level: info
+auth:
+  jwt:
+    secret: super-secret
+storage:
+  provider: local
+  local:
+    rootDir: /tmp/cache/turbo
+```
+
+Full config example (trc.json):
+
+```json
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 3000
+  },
+  "logging": {
+    "level": "info"
+  },
+  "auth": {
+    "jwt": {
+      "secret": "super-secret"
+    }
+  },
+  "storage": {
+    "provider": "local",
+    "local": {
+      "rootDir": "/tmp/cache/turbo"
+    }
+  }
+}
+```
+
 Required fields:
 
 - `rootDir`: directory where artifact files and metadata will be written.

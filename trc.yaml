@@ -1,0 +1,17 @@
+server:
+  host: 127.0.0.1
+  port: 3003
+logging:
+  level: debug
+auth:
+  jwt:
+    secret: $TRC_AUTH_JWT_SECRET
+storage:
+  provider: s3
+  s3:
+    endpoint: $CLOUDFLARE_R2_ENDPOINT
+    region: auto
+    bucket: $CLOUDFLARE_R2_BUCKET
+    accessKeyId: $CLOUDFLARE_R2_ACCESS_KEY_ID
+    secretAccessKey: $CLOUDFLARE_R2_SECRET_ACCESS_KEY
+    forcePathStyle: true

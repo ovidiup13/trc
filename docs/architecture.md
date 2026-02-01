@@ -54,7 +54,7 @@ Auth is implemented via `jose` and applied globally to the Hono app.
 
 ## Config
 
-Config is YAML-based with schema validation (zod). It supports defaults and rich error reporting.
+Config is YAML or JSON with schema validation (zod). It supports defaults, env overrides, and rich error reporting.
 
 **Config sources and precedence**
 
@@ -63,14 +63,20 @@ Config is YAML-based with schema validation (zod). It supports defaults and rich
 3. CLI `--config` option
 4. Default path: `./trc.yaml`
 
+**Overrides**
+
+- `TRC_*` overrides for TRC settings (server/logging/auth/storage provider).
+- `STORAGE_*` overrides for storage provider settings.
+
 **Schema highlights**
 
 - `server.host` (default `0.0.0.0`)
 - `server.port` (default `3000`)
 - `logging.level` (enum `fatal|error|warn|info|debug|trace|silent`)
 - `auth.jwt.secret` (required)
-- `storage.provider` (currently only `local`)
+- `storage.provider` (`local` or `s3`)
 - `storage.local.rootDir` (required)
+- `storage.s3` fields for S3-compatible storage
 
 **Example config**
 

@@ -22,5 +22,11 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     }
+  },
+  "remoteCache": {
+    "enabled": true,
+    "apiUrl": "http://localhost:3003",
+    "teamId": "team_ovidiup13",
+    "teamSlug": "trc"
   }
 }
