@@ -86,6 +86,72 @@ export class ConfigError extends Error {
 	}
 }
 
+type DenoEnvRuntime = {
+	Deno?: {
+		env?: {
+			get?: (key: string) => string | undefined;
+		};
+	};
+};
+
+const getEnvValue = (key: string): string | undefined => {
+	if (typeof process !== "undefined" && process.env) {
+		return process.env[key];
+	}
+	const deno = (globalThis as DenoEnvRuntime).Deno;
+	if (deno?.env?.get) {
+		return deno.env.get(key);
+	}
+	return undefined;
+};
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+	Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const resolveS3Env = (rawConfig: unknown, sourceLabel: string): unknown => {
+	if (!isPlainObject(rawConfig)) {
+		return rawConfig;
+	}
+	const storage = rawConfig.storage;
+	if (!isPlainObject(storage) || storage.provider !== "s3") {
+		return rawConfig;
+	}
+	const s3Config = storage.s3;
+	if (!isPlainObject(s3Config)) {
+		return rawConfig;
+	}
+
+	const issues: ConfigIssue[] = [];
+	for (const [key, value] of Object.entries(s3Config)) {
+		if (typeof value !== "string" || !value.startsWith("$")) {
+			continue;
+		}
+		const envKey = value.slice(1);
+		if (!envKey) {
+			issues.push({
+				path: `storage.s3.${key}`,
+				message: "Missing environment variable name",
+			});
+			continue;
+		}
+		const envValue = getEnvValue(envKey);
+		if (envValue === undefined) {
+			issues.push({
+				path: `storage.s3.${key}`,
+				message: `Missing environment variable: ${envKey}`,
+			});
+			continue;
+		}
+		s3Config[key] = envValue;
+	}
+
+	if (issues.length) {
+		throw new ConfigError(`Invalid ${sourceLabel}`, issues);
+	}
+
+	return rawConfig;
+};
+
 const formatIssuePath = (path: Array<string | number | symbol>): string =>
 	path.length ? path.map((segment) => segment.toString()).join(".") : "(root)";
 
@@ -126,7 +192,8 @@ const parseConfigString = (
 	}
 
 	try {
-		return configSchema.parse(parsed);
+		const resolved = resolveS3Env(parsed, sourceLabel);
+		return configSchema.parse(resolved);
 	} catch (error) {
 		if (error instanceof ZodError) {
 			throw new ConfigError(`Invalid ${sourceLabel}`, formatZodIssues(error));
