@@ -135,6 +135,29 @@ const updateTurboConfig = async (
 	await writeFile(configPath, `${JSON.stringify(json, null, 2)}\n`, "utf-8");
 };
 
+const readRemoteCacheConfig = async (
+	configPath: string,
+): Promise<{ teamId?: string; teamSlug?: string }> => {
+	const raw = await readFile(configPath, "utf-8");
+	const json = JSON.parse(raw) as Record<string, unknown>;
+	const remoteCache =
+		(typeof json.remoteCache === "object" && json.remoteCache) || {};
+	const record = remoteCache as Record<string, unknown>;
+	const teamId = typeof record.teamId === "string" ? record.teamId : undefined;
+	const teamSlug =
+		typeof record.teamSlug === "string"
+			? record.teamSlug
+			: typeof record.slug === "string"
+				? record.slug
+				: undefined;
+	return { teamId, teamSlug };
+};
+
+const normalizeScopeSegment = (value?: string): string => {
+	const trimmed = value?.trim();
+	return trimmed && trimmed.length > 0 ? trimmed : "_";
+};
+
 const listFiles = async (dirPath: string): Promise<string[]> => {
 	const entries = await readdir(dirPath, { withFileTypes: true });
 	return entries.filter((entry) => entry.isFile()).map((entry) => entry.name);
@@ -240,6 +263,12 @@ test.skipIf(!(await isDockerAvailable()))(
 			force: true,
 		});
 		await updateTurboConfig(join(exampleDir, "turbo.json"), "http://trc:3000");
+		const { teamId, teamSlug } = await readRemoteCacheConfig(
+			join(exampleDir, "turbo.json"),
+		);
+		const teamSegment = normalizeScopeSegment(teamId);
+		const slugSegment = normalizeScopeSegment(teamSlug);
+		const scopePrefix = `${teamSegment}/${slugSegment}/`;
 
 		const configContents = `server:\n  host: 0.0.0.0\n  port: 3000\nlogging:\n  level: info\nauth:\n  type: jwt\n  jwt:\n    secret: ${secret}\nstorage:\n  provider: s3\n  s3:\n    endpoint: http://minio:9000\n    region: us-east-1\n    bucket: ${bucket}\n    accessKeyId: ${s3AccessKey}\n    secretAccessKey: ${s3SecretKey}\n    forcePathStyle: true\n`;
 		await writeFile(join(configDir, "trc.yaml"), configContents, "utf-8");
@@ -405,12 +434,14 @@ test.skipIf(!(await isDockerAvailable()))(
 				cacheCount: cacheHashes.size,
 				storageSample: Array.from(storageHashes).slice(0, 5),
 				cacheSample: Array.from(cacheHashes).slice(0, 5),
+				scopePrefix,
 			});
 
 			expect(storageHashes.size).toBeGreaterThan(0);
 			expect(cacheHashes.size).toBeGreaterThan(0);
 			for (const hash of cacheHashes) {
-				expect(storageHashes.has(hash)).toBe(true);
+				const expectedKey = `${scopePrefix}${hash}`;
+				expect(storageHashes.has(expectedKey)).toBe(true);
 			}
 			success = true;
 		} finally {

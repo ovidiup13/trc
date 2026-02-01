@@ -1,32 +1,35 @@
 {
-  "$schema": "https://turbo.build/schema.json",
-  "ui": "tui",
-  "tasks": {
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "typecheck": {
-      "dependsOn": ["^typecheck"]
-    },
-    "lint": {
-      "dependsOn": ["^lint"]
-    },
-    "format": {
-      "dependsOn": ["^format"]
-    },
-    "test": {
-      "dependsOn": ["^test"]
-    },
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
-    }
-  },
-  "remoteCache": {
-    "enabled": true,
-    "apiUrl": "http://localhost:3003",
-    "teamId": "team_ovidiup13",
-    "teamSlug": "trc"
-  }
+	"$schema": "https://turbo.build/schema.json",
+	"ui": "tui",
+	"tasks": {
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"typecheck": {
+			"dependsOn": ["^typecheck"]
+		},
+		"lint": {
+			"dependsOn": ["^lint"]
+		},
+		"format": {
+			"dependsOn": ["^format"]
+		},
+		"test": {
+			"dependsOn": ["^test"]
+		},
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"]
+		},
+		"e2e": {
+			"cache": false
+		}
+	},
+	"remoteCache": {
+		"enabled": true,
+		"apiUrl": "http://localhost:3003",
+		"teamId": "team_ovidiup13",
+		"teamSlug": "trc"
+	}
 }

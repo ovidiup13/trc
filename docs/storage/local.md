@@ -2,7 +2,7 @@
 
 ## Overview
 
-The local provider stores artifacts on disk using a root directory. Each artifact is stored as a file named after its hash, with metadata stored in a neighboring `<hash>.json` file.
+The local provider stores artifacts on disk using a root directory. Each artifact is stored under `rootDir/<teamId>/<slug>/` as a file named after its hash, with metadata stored in a neighboring `<hash>.json` file. Missing scope values fall back to `_`.
 
 ## Configuration
 
