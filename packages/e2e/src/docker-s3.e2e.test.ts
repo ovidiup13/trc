@@ -1,7 +1,6 @@
 import { execFile } from "node:child_process";
 import {
 	appendFile,
-	cp,
 	mkdir,
 	mkdtemp,
 	readFile,
@@ -119,22 +118,6 @@ const writeEnvFile = async (
 	await writeFile(envPath, `${lines.join("\n")}\n`, "utf-8");
 };
 
-const updateTurboConfig = async (
-	configPath: string,
-	apiUrl: string,
-): Promise<void> => {
-	const raw = await readFile(configPath, "utf-8");
-	const json = JSON.parse(raw) as Record<string, unknown>;
-	const remoteCache =
-		(typeof json.remoteCache === "object" && json.remoteCache) || {};
-	json.remoteCache = {
-		...remoteCache,
-		enabled: true,
-		apiUrl,
-	};
-	await writeFile(configPath, `${JSON.stringify(json, null, 2)}\n`, "utf-8");
-};
-
 const readRemoteCacheConfig = async (
 	configPath: string,
 ): Promise<{ teamId?: string; teamSlug?: string }> => {
@@ -207,7 +190,6 @@ test.skipIf(!(await isDockerAvailable()))(
 		const runDir = await mkdtemp(join(tmpdir(), "trc-e2e-s3-"));
 		const runId = runDir.split("-").pop() ?? "run";
 		const configDir = join(runDir, "config");
-		const exampleDir = join(runDir, "examples", "basic");
 		const composeEnvPath = join(runDir, "compose.env");
 		const composeFile = join(rootDir, "packages/e2e/docker-compose.s3.e2e.yml");
 		const secret = "e2e-secret";
@@ -224,6 +206,7 @@ test.skipIf(!(await isDockerAvailable()))(
 		const uid = typeof process.getuid === "function" ? process.getuid() : 0;
 		const gid = typeof process.getgid === "function" ? process.getgid() : 0;
 		const projectName = `trc-e2e-s3-${timestamp}`;
+		const networkName = `${projectName}-net`;
 		const logPath = join(artifactsRunDir, "docker-compose.log");
 		const composeArgs = [
 			"compose",
@@ -240,10 +223,10 @@ test.skipIf(!(await isDockerAvailable()))(
 			artifactsRunDir,
 			configDir,
 			cacheDir,
-			exampleDir,
 			composeFile,
 			composeEnvPath,
 			projectName,
+			networkName,
 			logPath,
 			bucket,
 		});
@@ -253,18 +236,10 @@ test.skipIf(!(await isDockerAvailable()))(
 		await mkdir(configDir, { recursive: true });
 		await mkdir(artifactsRunDir, { recursive: true });
 		await mkdir(cacheDir, { recursive: true });
-		await mkdir(join(runDir, "examples"), { recursive: true });
 		await mkdir(s3DataDir, { recursive: true });
 
-		await cp(join(rootDir, "examples/basic"), exampleDir, { recursive: true });
-		await rm(join(exampleDir, ".turbo"), { recursive: true, force: true });
-		await rm(join(exampleDir, "node_modules"), {
-			recursive: true,
-			force: true,
-		});
-		await updateTurboConfig(join(exampleDir, "turbo.json"), "http://trc:3000");
 		const { teamId, teamSlug } = await readRemoteCacheConfig(
-			join(exampleDir, "turbo.json"),
+			join(rootDir, "examples/basic/turbo.json"),
 		);
 		const teamSegment = normalizeScopeSegment(teamId);
 		const slugSegment = normalizeScopeSegment(teamSlug);
@@ -280,7 +255,6 @@ test.skipIf(!(await isDockerAvailable()))(
 		await writeEnvFile(composeEnvPath, {
 			E2E_TRC_PORT: hostPort.toString(),
 			E2E_CONFIG_DIR: configDir,
-			E2E_EXAMPLE_DIR: exampleDir,
 			E2E_CACHE_DIR: cacheDir,
 			E2E_TURBO_TOKEN: token,
 			E2E_UID: uid.toString(),
@@ -288,31 +262,11 @@ test.skipIf(!(await isDockerAvailable()))(
 			E2E_S3_ACCESS_KEY: s3AccessKey,
 			E2E_S3_SECRET_KEY: s3SecretKey,
 			E2E_S3_DATA_DIR: s3DataDir,
+			E2E_NETWORK_NAME: networkName,
+			E2E_TURBO_API_URL: "http://trc:3000",
 		});
 
 		try {
-			try {
-				await execLogged(
-					"docker",
-					[
-						"compose",
-						"--progress=plain",
-						...composeArgs.slice(1),
-						"build",
-						"trc",
-						"runner",
-					],
-					{
-						cwd: rootDir,
-						logPath,
-					},
-				);
-			} catch (error) {
-				const buildLog = await readFile(logPath, "utf-8");
-				console.info(buildLog.length > 8000 ? buildLog.slice(-8000) : buildLog);
-				throw error;
-			}
-
 			await execLogged("docker", [...composeArgs, "up", "-d", "minio"], {
 				cwd: rootDir,
 				logPath,
@@ -457,14 +411,6 @@ test.skipIf(!(await isDockerAvailable()))(
 				await execLogged(
 					"docker",
 					[...composeArgs, "down", "--remove-orphans", "--rmi", "local"],
-					{
-						cwd: rootDir,
-						logPath,
-					},
-				);
-				await execLogged(
-					"docker",
-					["image", "rm", "-f", `${projectName}-trc`, `${projectName}-runner`],
 					{
 						cwd: rootDir,
 						logPath,

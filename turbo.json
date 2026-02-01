@@ -23,7 +23,21 @@
 			"outputs": ["dist/**"]
 		},
 		"e2e": {
-			"cache": false
+			"cache": false,
+			"dependsOn": ["e2e:prep"]
+		},
+		"e2e:prep": {
+			"cache": false,
+			"inputs": [
+				"apps/**",
+				"examples/**",
+				"packages/**",
+				"package.json",
+				"bun.lock",
+				"packages/e2e/docker/**",
+				"packages/e2e/package.json"
+			],
+			"outputs": []
 		}
 	},
 	"remoteCache": {

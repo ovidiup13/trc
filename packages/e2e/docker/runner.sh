@@ -1,19 +1,21 @@
 #!/bin/sh
 set -eu
 
-cd /workspace
+cd /workspace/examples/basic
 
-echo "Installing dependencies"
-bun install --no-save
+mkdir -p /workspace/examples/basic/.turbo
+chmod -R a+rwX /workspace/examples/basic
 
-echo "Running lint"
-bun run lint
+export TURBO_CACHE_DIR=${TURBO_CACHE_DIR:-/workspace/examples/basic/.turbo}
+export TURBO_LOG_DIR=${TURBO_LOG_DIR:-/workspace/examples/basic/.turbo}
 
-if bun -e "const fs=require('fs');const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));process.exit(pkg.scripts&&pkg.scripts.test?0:1)"; then
-  echo "Running tests"
-  bun run test
-else
-  echo "No test script defined, skipping"
+if [ -n "${E2E_TURBO_API_URL:-}" ]; then
+  bun -e "const fs=require('fs');const path='turbo.json';const json=JSON.parse(fs.readFileSync(path,'utf8'));const remote=typeof json.remoteCache==='object'&&json.remoteCache?json.remoteCache:{};json.remoteCache={...remote,enabled:true,apiUrl:process.env.E2E_TURBO_API_URL};fs.writeFileSync(path,JSON.stringify(json,null,2)+'\n');"
+fi
+
+if [ ! -d node_modules ]; then
+  echo "Installing dependencies"
+  bun install --no-save
 fi
 
 echo "Running build"

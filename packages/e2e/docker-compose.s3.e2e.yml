@@ -7,10 +7,10 @@ services:
       MINIO_ROOT_PASSWORD: "${E2E_S3_SECRET_KEY}"
     volumes:
       - "${E2E_S3_DATA_DIR}:/data"
+    networks:
+      - e2e
   trc:
-    build:
-      context: ../..
-      dockerfile: packages/e2e/docker/Dockerfile.server
+    image: trc-e2e-server:latest
     ports:
       - "${E2E_TRC_PORT}:3000"
     depends_on:
@@ -19,20 +19,29 @@ services:
       - "${E2E_CONFIG_DIR}:/config"
     environment:
       TRC_CONFIG: /config/trc.yaml
+    networks:
+      - e2e
   runner:
-    build:
-      context: ../..
-      dockerfile: packages/e2e/docker/Dockerfile.runner
-    user: "${E2E_UID:-0}:${E2E_GID:-0}"
+    image: trc-e2e-runner:latest
     depends_on:
       - trc
     volumes:
-      - "${E2E_EXAMPLE_DIR}:/workspace"
-      - "${E2E_CACHE_DIR}:/workspace/.turbo"
+      - "${E2E_CACHE_DIR}:/workspace/examples/basic/.turbo"
     environment:
       TURBO_TOKEN: "${E2E_TURBO_TOKEN}"
+      E2E_TURBO_API_URL: "${E2E_TURBO_API_URL}"
+      TURBO_CACHE_DIR: /workspace/examples/basic/.turbo/cache
+      TURBO_LOG_DIR: /workspace/examples/basic/.turbo/cache
+    networks:
+      - e2e
   minio-client:
     image: minio/mc:latest
     depends_on:
       - minio
     entrypoint: /bin/sh
+    networks:
+      - e2e
+
+networks:
+  e2e:
+    name: "${E2E_NETWORK_NAME}"

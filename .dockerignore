@@ -1,0 +1,7 @@
+node_modules
+**/node_modules
+.env
+tmp/
+.e2e-artifacts/
+.turbo/
+trc.yaml
