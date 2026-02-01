@@ -63,4 +63,4 @@ jobs:
         run: bun install
 
       - name: E2E tests
-        run: bunx turbo run test --filter=@trc/e2e
+        run: bunx turbo run e2e --filter=@trc/e2e
