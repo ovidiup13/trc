@@ -1,9 +1,9 @@
 import type { TrcConfig } from "@trc/config";
+import type { Logger } from "@trc/logger";
 import type { StorageProvider } from "@trc/storage-core";
 import type { MiddlewareHandler } from "hono";
 import { expect, test, vi } from "vitest";
 import { createApp } from "../app";
-import type { Logger } from "../logger";
 
 const baseConfig: TrcConfig = {
 	server: {
@@ -14,6 +14,7 @@ const baseConfig: TrcConfig = {
 		level: "silent",
 	},
 	auth: {
+		type: "jwt",
 		jwt: {
 			secret: "test-secret",
 		},

@@ -1,10 +1,10 @@
 import { ReadableStream } from "node:stream/web";
 import type { TrcConfig } from "@trc/config";
+import type { Logger } from "@trc/logger";
 import type { StorageProvider } from "@trc/storage-core";
 import type { MiddlewareHandler } from "hono";
 import { expect, test, vi } from "vitest";
 import { createApp } from "../app";
-import type { Logger } from "../logger";
 
 const baseConfig: TrcConfig = {
 	server: {
@@ -15,6 +15,7 @@ const baseConfig: TrcConfig = {
 		level: "silent",
 	},
 	auth: {
+		type: "jwt",
 		jwt: {
 			secret: "test-secret",
 		},
@@ -108,6 +109,36 @@ test("PUT /artifacts/:hash stores metadata and body", async () => {
 				tag: "tag",
 			},
 		}),
+		{ teamId: undefined, slug: undefined },
+	);
+});
+
+test("PUT /artifacts/:hash includes team scope", async () => {
+	const payload = new TextEncoder().encode("payload");
+	const { app, storage } = createTestApp();
+
+	const response = await app.request(
+		"/artifacts/abc123?teamId=team_ovidiup13&slug=trc",
+		{
+			method: "PUT",
+			headers: {
+				"content-length": payload.length.toString(),
+			},
+			body: payload,
+		},
+	);
+
+	expect(response.status).toBe(202);
+	expect(storage.put).toHaveBeenCalledWith(
+		"abc123",
+		expect.objectContaining({
+			metadata: {
+				size: payload.length,
+				durationMs: undefined,
+				tag: undefined,
+			},
+		}),
+		{ teamId: "team_ovidiup13", slug: "trc" },
 	);
 });
 

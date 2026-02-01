@@ -16,20 +16,26 @@ test("stores and retrieves artifacts", async () => {
 		const provider = createLocalProvider({ rootDir });
 		const hash = "abc123";
 		const payload = new TextEncoder().encode("hello");
+		const scope = { teamId: "team-1", slug: "app" };
 
-		await provider.put(hash, {
-			metadata: {
-				size: payload.length,
-				durationMs: 120,
-				tag: "tag",
+		await provider.put(
+			hash,
+			{
+				metadata: {
+					size: payload.length,
+					durationMs: 120,
+					tag: "tag",
+				},
+				body: toStream(payload),
 			},
-			body: toStream(payload),
-		});
+			scope,
+		);
 
-		const head = await provider.head(hash);
+		const head = await provider.head(hash, scope);
 		expect(head).toEqual({ size: payload.length, durationMs: 120, tag: "tag" });
+		expect(await provider.head(hash, { teamId: "other" })).toBeNull();
 
-		const artifact = await provider.get(hash);
+		const artifact = await provider.get(hash, scope);
 		expect(artifact?.metadata).toEqual({
 			size: payload.length,
 			durationMs: 120,
@@ -45,7 +51,7 @@ test("stores and retrieves artifacts", async () => {
 		).arrayBuffer();
 		expect(new Uint8Array(buffer)).toEqual(payload);
 
-		const query = await provider.query([hash, "missing"]);
+		const query = await provider.query([hash, "missing"], scope);
 		expect(query[hash]).toEqual({
 			size: payload.length,
 			durationMs: 120,

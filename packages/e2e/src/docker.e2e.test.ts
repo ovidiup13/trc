@@ -211,7 +211,7 @@ test.skipIf(!(await isDockerAvailable()))(
 		});
 		await updateTurboConfig(join(exampleDir, "turbo.json"), "http://trc:3000");
 
-		const configContents = `server:\n  host: 0.0.0.0\n  port: 3000\nlogging:\n  level: info\nauth:\n  jwt:\n    secret: ${secret}\nstorage:\n  provider: local\n  local:\n    rootDir: /data\n`;
+		const configContents = `server:\n  host: 0.0.0.0\n  port: 3000\nlogging:\n  level: info\nauth:\n  type: jwt\n  jwt:\n    secret: ${secret}\nstorage:\n  provider: local\n  local:\n    rootDir: /data\n`;
 		await writeFile(join(configDir, "trc.yaml"), configContents, "utf-8");
 
 		const token = await new SignJWT({ sub: "e2e" })

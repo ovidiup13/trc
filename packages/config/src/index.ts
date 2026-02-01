@@ -6,14 +6,31 @@ const serverSchema = z.object({
 	port: z.number().int().min(1).max(65535).default(3000),
 });
 
-const authSchema = z.object({
+const jwtAuthSchema = z.object({
+	type: z.literal("jwt"),
 	jwt: z.object({
 		secret: z.string().min(1),
 	}),
 });
 
+const sharedSecretAuthSchema = z.object({
+	type: z.literal("shared-secret"),
+	sharedSecret: z.object({
+		secret: z.string().min(1),
+	}),
+});
+
+const authSchema = z.discriminatedUnion("type", [
+	jwtAuthSchema,
+	sharedSecretAuthSchema,
+]);
+
 const loggingSchema = z.object({
-	level: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]),
+	level: z
+		.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
+		.default("info"),
+	pretty: z.boolean().optional(),
+	file: z.string().min(1).optional(),
 });
 
 const localStorageSchema = z.object({
@@ -110,52 +127,67 @@ const getEnvValue = (key: string): string | undefined => {
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 	Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
-const resolveS3Env = (rawConfig: unknown, sourceLabel: string): unknown => {
-	if (!isPlainObject(rawConfig)) {
-		return rawConfig;
-	}
-	const storage = rawConfig.storage;
-	if (!isPlainObject(storage) || storage.provider !== "s3") {
-		return rawConfig;
-	}
-	const s3Config = storage.s3;
-	if (!isPlainObject(s3Config)) {
-		return rawConfig;
-	}
-
-	const issues: ConfigIssue[] = [];
-	for (const [key, value] of Object.entries(s3Config)) {
-		if (typeof value !== "string" || !value.startsWith("$")) {
-			continue;
-		}
-		const envKey = value.slice(1);
-		if (!envKey) {
-			issues.push({
-				path: `storage.s3.${key}`,
-				message: "Missing environment variable name",
-			});
-			continue;
-		}
-		const envValue = getEnvValue(envKey);
-		if (envValue === undefined) {
-			issues.push({
-				path: `storage.s3.${key}`,
-				message: `Missing environment variable: ${envKey}`,
-			});
-			continue;
-		}
-		s3Config[key] = envValue;
-	}
-
-	if (issues.length) {
-		throw new ConfigError(`Invalid ${sourceLabel}`, issues);
-	}
-
-	return rawConfig;
-};
-
 const formatIssuePath = (path: Array<string | number | symbol>): string =>
 	path.length ? path.map((segment) => segment.toString()).join(".") : "(root)";
+
+const resolveEnvReferences = (
+	rawConfig: unknown,
+	sourceLabel: string,
+): unknown => {
+	const issues: Array<{
+		path: Array<string | number | symbol>;
+		message: string;
+	}> = [];
+
+	const resolveValue = (
+		value: unknown,
+		path: Array<string | number | symbol>,
+	): unknown => {
+		if (typeof value === "string" && value.startsWith("$")) {
+			const envKey = value.slice(1);
+			if (!envKey) {
+				issues.push({
+					path,
+					message: "Missing environment variable name",
+				});
+				return value;
+			}
+			const envValue = getEnvValue(envKey);
+			if (envValue === undefined) {
+				issues.push({
+					path,
+					message: `Missing environment variable: ${envKey}`,
+				});
+				return value;
+			}
+			return envValue;
+		}
+		if (Array.isArray(value)) {
+			return value.map((item, index) => resolveValue(item, [...path, index]));
+		}
+		if (isPlainObject(value)) {
+			const resolved: Record<string, unknown> = {};
+			for (const [key, nestedValue] of Object.entries(value)) {
+				resolved[key] = resolveValue(nestedValue, [...path, key]);
+			}
+			return resolved;
+		}
+		return value;
+	};
+
+	const resolved = resolveValue(rawConfig, []);
+	if (issues.length) {
+		throw new ConfigError(
+			`Invalid ${sourceLabel}`,
+			issues.map((issue) => ({
+				path: formatIssuePath(issue.path),
+				message: issue.message,
+			})),
+		);
+	}
+
+	return resolved;
+};
 
 const formatZodIssues = (error: ZodError): ConfigIssue[] =>
 	error.issues.map((issue) => ({
@@ -315,7 +347,30 @@ const applyEnvOverrides = (
 	applyString("TRC_SERVER_HOST", ["server", "host"]);
 	applyNumber("TRC_SERVER_PORT", ["server", "port"]);
 	applyString("TRC_LOGGING_LEVEL", ["logging", "level"]);
+	applyBooleanValue("TRC_LOGGING_PRETTY", ["logging", "pretty"]);
+	applyString("TRC_LOGGING_FILE", ["logging", "file"]);
+	applyString("TRC_AUTH_TYPE", ["auth", "type"]);
 	applyString("TRC_AUTH_JWT_SECRET", ["auth", "jwt", "secret"]);
+	applyString("TRC_AUTH_SHARED_SECRET", ["auth", "sharedSecret", "secret"]);
+
+	const authType = getEnvValue("TRC_AUTH_TYPE");
+	const jwtSecret = getEnvValue("TRC_AUTH_JWT_SECRET");
+	const sharedSecret = getEnvValue("TRC_AUTH_SHARED_SECRET");
+	const auth = ensureObject(config.auth);
+	const currentAuthType = typeof auth.type === "string" ? auth.type : undefined;
+	if (!currentAuthType && authType === undefined) {
+		if (jwtSecret !== undefined && sharedSecret !== undefined) {
+			issues.push({
+				path: "auth.type",
+				message:
+					"Auth type is required when both JWT and shared secret env vars are set",
+			});
+		} else if (jwtSecret !== undefined) {
+			setNestedValue(config, ["auth", "type"], "jwt");
+		} else if (sharedSecret !== undefined) {
+			setNestedValue(config, ["auth", "type"], "shared-secret");
+		}
+	}
 
 	const envProvider = getEnvValue("TRC_STORAGE_PROVIDER");
 	if (envProvider !== undefined) {
@@ -445,7 +500,7 @@ const parseConfigString = (
 
 	try {
 		const resolved = applyEnvOverrides(
-			resolveS3Env(parsed ?? {}, sourceLabel),
+			resolveEnvReferences(parsed ?? {}, sourceLabel),
 			sourceLabel,
 		);
 		return configSchema.parse(resolved);

@@ -71,6 +71,8 @@ describe("s3 provider", () => {
 		forcePathStyle: true,
 	};
 
+	const scope = { teamId: "team-1", slug: "app" };
+
 	test("head returns null for missing objects", async () => {
 		const provider = createS3Provider(baseConfig);
 		const client = getLastClient();
@@ -83,7 +85,7 @@ describe("s3 provider", () => {
 			return {};
 		});
 
-		const result = await provider.head("missing-hash");
+		const result = await provider.head("missing-hash", scope);
 		expect(result).toBeNull();
 	});
 
@@ -105,7 +107,7 @@ describe("s3 provider", () => {
 			return {};
 		});
 
-		const result = await provider.get("hash-1");
+		const result = await provider.get("hash-1", scope);
 		expect(result?.metadata).toEqual({
 			size: 4,
 			durationMs: 12,
@@ -119,16 +121,20 @@ describe("s3 provider", () => {
 		const client = getLastClient();
 		client.send.mockResolvedValue({});
 
-		await provider.put("hash-2", {
-			metadata: {
-				size: 10,
-				durationMs: 200,
-				tag: "tag-2",
+		await provider.put(
+			"hash-2",
+			{
+				metadata: {
+					size: 10,
+					durationMs: 200,
+					tag: "tag-2",
+				},
+				body: Readable.toWeb(
+					Readable.from([Buffer.from("payload")]),
+				) as WebReadableStream<Uint8Array>,
 			},
-			body: Readable.toWeb(
-				Readable.from([Buffer.from("payload")]),
-			) as WebReadableStream<Uint8Array>,
-		});
+			scope,
+		);
 
 		expect(client.send).toHaveBeenCalledTimes(1);
 		const command = client.send.mock.calls[0]?.[0] as
@@ -137,7 +143,7 @@ describe("s3 provider", () => {
 		expect(command).toBeInstanceOf(PutObjectCommand);
 		expect(command?.input).toMatchObject({
 			Bucket: "trc-cache",
-			Key: "hash-2",
+			Key: "team-1/app/hash-2",
 			ContentLength: 7,
 			Metadata: {
 				size: "10",
@@ -154,7 +160,7 @@ describe("s3 provider", () => {
 		client.send.mockImplementation(async (command: unknown) => {
 			if (command instanceof HeadObjectCommand) {
 				const input = command.input as { Key?: string };
-				if (input.Key === "hit") {
+				if (input.Key === "team-1/app/hit") {
 					return {
 						ContentLength: 2,
 						Metadata: { size: "2" },
@@ -167,7 +173,7 @@ describe("s3 provider", () => {
 			return {};
 		});
 
-		const result = await provider.query(["hit", "miss"]);
+		const result = await provider.query(["hit", "miss"], scope);
 		expect(result).toEqual({
 			hit: { size: 2 },
 			miss: null,

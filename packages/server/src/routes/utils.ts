@@ -1,5 +1,5 @@
 import { createErrorResponse } from "@trc/shared";
-import type { ArtifactMetadata } from "@trc/storage-core";
+import type { ArtifactMetadata, ArtifactScope } from "@trc/storage-core";
 
 const hashPattern = /^[a-fA-F0-9]+$/;
 
@@ -28,4 +28,20 @@ export const toArtifactHeaders = (metadata: ArtifactMetadata): Headers => {
 	}
 
 	return headers;
+};
+
+const normalizeQueryValue = (value: string | null): string | undefined => {
+	if (!value) {
+		return undefined;
+	}
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : undefined;
+};
+
+export const getArtifactScope = (requestUrl: string): ArtifactScope => {
+	const { searchParams } = new URL(requestUrl);
+	return {
+		teamId: normalizeQueryValue(searchParams.get("teamId")),
+		slug: normalizeQueryValue(searchParams.get("slug")),
+	};
 };

@@ -28,6 +28,7 @@ server:
 logging:
   level: info
 auth:
+  type: jwt
   jwt:
     secret: super-secret
 storage:
@@ -48,6 +49,7 @@ Full config example (trc.json):
     "level": "info"
   },
   "auth": {
+    "type": "jwt",
     "jwt": {
       "secret": "super-secret"
     }

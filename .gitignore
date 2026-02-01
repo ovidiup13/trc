@@ -9,3 +9,4 @@ coverage/
 .bun-cache/
 tmp/
 .e2e-artifacts/
+.vscode/

@@ -4,6 +4,7 @@ server:
 logging:
   level: debug
 auth:
+  type: jwt
   jwt:
     secret: $TRC_AUTH_JWT_SECRET
 storage:

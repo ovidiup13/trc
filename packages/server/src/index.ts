@@ -1,4 +1,5 @@
 import type { TrcConfig } from "@trc/config";
+import { createLogger } from "@trc/logger";
 import { createApp } from "./app";
 
 type BunServe = (options: {
@@ -20,7 +21,7 @@ export type ServerInfo = {
 
 export { createApp } from "./app";
 export { createAuthMiddleware } from "./auth";
-export { createLogger } from "./logger";
+export { createLogger } from "@trc/logger";
 export { createStorageProvider } from "./storage";
 
 const getBunServe = (): BunServe | undefined =>
@@ -33,10 +34,25 @@ const isNodeRuntime = (): boolean =>
 	typeof process !== "undefined" && !!process.versions?.node;
 
 export const startServer = async (config: TrcConfig): Promise<ServerInfo> => {
-	const app = createApp(config);
+	const logger = createLogger({
+		level: config.logging.level,
+		pretty: config.logging.pretty,
+		file: config.logging.file,
+	});
+	const app = createApp(config, { logger });
 	const hostname = config.server.host;
 	const port = config.server.port;
 	const bunServe = getBunServe();
+	const storage = config.storage;
+	const storageDetails =
+		storage.provider === "local"
+			? { rootDir: storage.local.rootDir }
+			: {
+					endpoint: storage.s3.endpoint,
+					region: storage.s3.region,
+					bucket: storage.s3.bucket,
+					forcePathStyle: storage.s3.forcePathStyle,
+				};
 
 	if (bunServe) {
 		const server = bunServe({
@@ -44,6 +60,17 @@ export const startServer = async (config: TrcConfig): Promise<ServerInfo> => {
 			port,
 			fetch: app.fetch,
 		});
+		logger.info(
+			{
+				hostname: server.hostname,
+				port: server.port,
+				url: `http://${server.hostname}:${server.port}`,
+				loggingLevel: config.logging.level,
+				storageProvider: storage.provider,
+				storage: storageDetails,
+			},
+			"o/ TRC server running",
+		);
 		return {
 			hostname: server.hostname,
 			port: server.port,
@@ -59,6 +86,17 @@ export const startServer = async (config: TrcConfig): Promise<ServerInfo> => {
 				port,
 			},
 			app.fetch,
+		);
+		logger.info(
+			{
+				hostname,
+				port,
+				url: `http://${hostname}:${port}`,
+				loggingLevel: config.logging.level,
+				storageProvider: storage.provider,
+				storage: storageDetails,
+			},
+			"o/ TRC server running",
 		);
 		return {
 			hostname,
@@ -83,9 +121,21 @@ export const startServer = async (config: TrcConfig): Promise<ServerInfo> => {
 	const resolvedHost =
 		typeof address === "object" && address ? address.address : hostname;
 
+	const url = `http://${resolvedHost}:${resolvedPort}`;
+	logger.info(
+		{
+			hostname: resolvedHost,
+			port: resolvedPort,
+			url,
+			loggingLevel: config.logging.level,
+			storageProvider: storage.provider,
+			storage: storageDetails,
+		},
+		"o/ TRC server running",
+	);
 	return {
 		hostname: resolvedHost,
 		port: resolvedPort,
-		url: `http://${resolvedHost}:${resolvedPort}`,
+		url,
 	};
 };

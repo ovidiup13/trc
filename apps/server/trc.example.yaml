@@ -4,6 +4,7 @@ server:
 logging:
   level: debug
 auth:
+  type: jwt
   jwt:
     secret: a-string-secret-at-least-256-bits-long
 storage:

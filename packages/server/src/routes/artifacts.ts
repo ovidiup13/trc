@@ -4,7 +4,12 @@ import type { ApiJsonResponse, ApiRequestBody } from "@trc/shared";
 import type { ArtifactMetadata } from "@trc/storage-core";
 import type { Hono } from "hono";
 import type { RouteDependencies } from "./types";
-import { badRequest, isValidHash, toArtifactHeaders } from "./utils";
+import {
+	badRequest,
+	getArtifactScope,
+	isValidHash,
+	toArtifactHeaders,
+} from "./utils";
 
 export const registerArtifactRoutes = (
 	target: Hono,
@@ -22,8 +27,9 @@ export const registerArtifactRoutes = (
 		if (!isValidHash(hash)) {
 			return badRequest("Invalid artifact hash");
 		}
+		const scope = getArtifactScope(context.req.url);
 		if (context.req.method === "HEAD") {
-			const metadata = await storage.head(hash);
+			const metadata = await storage.head(hash, scope);
 			if (!metadata) {
 				return context.json(
 					createErrorResponse("not_found", "Artifact not found"),
@@ -34,7 +40,7 @@ export const registerArtifactRoutes = (
 			const headers = toArtifactHeaders(metadata);
 			return new Response(null, { status: 200, headers });
 		}
-		const artifact = await storage.get(hash);
+		const artifact = await storage.get(hash, scope);
 		if (!artifact?.body) {
 			return context.json(
 				createErrorResponse("not_found", "Artifact not found"),
@@ -53,6 +59,7 @@ export const registerArtifactRoutes = (
 		if (!isValidHash(hash)) {
 			return badRequest("Invalid artifact hash");
 		}
+		const scope = getArtifactScope(context.req.url);
 		const contentLength = context.req.header("content-length");
 		if (!contentLength) {
 			return badRequest("Missing Content-Length");
@@ -79,14 +86,18 @@ export const registerArtifactRoutes = (
 			return badRequest("Missing request body");
 		}
 
-		await storage.put(hash, {
-			metadata: {
-				size,
-				durationMs,
-				tag,
+		await storage.put(
+			hash,
+			{
+				metadata: {
+					size,
+					durationMs,
+					tag,
+				},
+				body: body as unknown as WebReadableStream<Uint8Array>,
 			},
-			body: body as unknown as WebReadableStream<Uint8Array>,
-		});
+			scope,
+		);
 
 		const response: ApiJsonResponse<"/artifacts/{hash}", "put", 202> = {
 			urls: [],
@@ -111,7 +122,8 @@ export const registerArtifactRoutes = (
 			return badRequest("Invalid artifact hashes");
 		}
 
-		const results = await storage.query(hashes);
+		const scope = getArtifactScope(context.req.url);
+		const results = await storage.query(hashes, scope);
 		const entries = Object.entries(results) as [
 			string,
 			ArtifactMetadata | null,

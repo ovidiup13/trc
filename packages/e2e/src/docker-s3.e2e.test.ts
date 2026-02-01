@@ -241,7 +241,7 @@ test.skipIf(!(await isDockerAvailable()))(
 		});
 		await updateTurboConfig(join(exampleDir, "turbo.json"), "http://trc:3000");
 
-		const configContents = `server:\n  host: 0.0.0.0\n  port: 3000\nlogging:\n  level: info\nauth:\n  jwt:\n    secret: ${secret}\nstorage:\n  provider: s3\n  s3:\n    endpoint: http://minio:9000\n    region: us-east-1\n    bucket: ${bucket}\n    accessKeyId: ${s3AccessKey}\n    secretAccessKey: ${s3SecretKey}\n    forcePathStyle: true\n`;
+		const configContents = `server:\n  host: 0.0.0.0\n  port: 3000\nlogging:\n  level: info\nauth:\n  type: jwt\n  jwt:\n    secret: ${secret}\nstorage:\n  provider: s3\n  s3:\n    endpoint: http://minio:9000\n    region: us-east-1\n    bucket: ${bucket}\n    accessKeyId: ${s3AccessKey}\n    secretAccessKey: ${s3SecretKey}\n    forcePathStyle: true\n`;
 		await writeFile(join(configDir, "trc.yaml"), configContents, "utf-8");
 
 		const token = await new SignJWT({ sub: "e2e" })

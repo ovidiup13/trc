@@ -16,6 +16,7 @@ const createConfig = async (): Promise<TrcConfig> => {
 			level: "silent",
 		},
 		auth: {
+			type: "jwt",
 			jwt: {
 				secret: "secret",
 			},

@@ -6,7 +6,7 @@ import { expect, test } from "vitest";
 import { loadResolvedConfig, resolveConfigInput } from "./config";
 
 const sampleConfig =
-	"auth:\n  jwt:\n    secret: test\nstorage:\n  provider: local\n  local:\n    rootDir: /tmp/trc\n";
+	"auth:\n  type: jwt\n  jwt:\n    secret: test\nstorage:\n  provider: local\n  local:\n    rootDir: /tmp/trc\n";
 
 const writeTempConfig = async (contents: string): Promise<string> => {
 	const filePath = join(tmpdir(), `trc-config-${randomUUID()}.yaml`);

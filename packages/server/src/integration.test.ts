@@ -20,6 +20,7 @@ const createConfig = async (rootDir: string): Promise<TrcConfig> => ({
 		level: "silent",
 	},
 	auth: {
+		type: "jwt",
 		jwt: {
 			secret: "secret",
 		},
@@ -37,6 +38,9 @@ test("integration flow for artifacts", async () => {
 	try {
 		const config = await createConfig(rootDir);
 		const app = createApp(config);
+		if (config.auth.type !== "jwt") {
+			throw new Error("Expected jwt auth for integration test");
+		}
 		const token = await createToken(config.auth.jwt.secret);
 		const headers = {
 			authorization: `Bearer ${token}`,

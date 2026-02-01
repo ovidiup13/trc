@@ -76,7 +76,7 @@ TRC reads configuration from YAML or JSON and applies environment variable overr
 - Sources (highest to lowest): `TRC_CONFIG`, `TRC_CONFIG_PATH`, `--config`, `./trc.yaml`
 - Overrides: `TRC_*` for TRC settings, `STORAGE_*` for storage settings
 
-Full details, field reference, and examples live in `docs/configuration.md`.
+Full details, field reference, and examples live in `docs/configuration.md` and `docs/authentication.md`.
 
 ## CLI
 
@@ -98,7 +98,11 @@ Environment variables:
 - `TRC_SERVER_HOST`: Override `server.host`.
 - `TRC_SERVER_PORT`: Override `server.port`.
 - `TRC_LOGGING_LEVEL`: Override `logging.level`.
+- `TRC_LOGGING_PRETTY`: Override `logging.pretty`.
+- `TRC_LOGGING_FILE`: Override `logging.file`.
+- `TRC_AUTH_TYPE`: Override `auth.type`.
 - `TRC_AUTH_JWT_SECRET`: Override `auth.jwt.secret`.
+- `TRC_AUTH_SHARED_SECRET`: Override `auth.sharedSecret.secret`.
 - `TRC_STORAGE_PROVIDER`: Override `storage.provider`.
 - `STORAGE_LOCAL_ROOT_DIR`: Override `storage.local.rootDir`.
 - `STORAGE_S3_ENDPOINT`: Override `storage.s3.endpoint`.

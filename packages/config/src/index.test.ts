@@ -33,9 +33,18 @@ const restoreEnvKeys = (backup: Record<string, string | undefined>): void => {
 	}
 };
 
+const clearEnvByPrefix = (
+	prefixes: string[],
+): Record<string, string | undefined> => {
+	const keys = Object.keys(process.env).filter((key) =>
+		prefixes.some((prefix) => key.startsWith(prefix)),
+	);
+	return clearEnvKeys(keys);
+};
+
 test("loads config with server defaults", async () => {
 	const filePath = await writeTempConfig(
-		"auth:\n  jwt:\n    secret: test\nstorage:\n  provider: local\n  local:\n    rootDir: /tmp/trc\n",
+		"auth:\n  type: jwt\n  jwt:\n    secret: test\nstorage:\n  provider: local\n  local:\n    rootDir: /tmp/trc\n",
 	);
 	const config = await loadConfig(filePath);
 
@@ -46,7 +55,7 @@ test("loads config with server defaults", async () => {
 
 test("parseConfig parses raw yaml", () => {
 	const config = parseConfig(
-		"auth:\n  jwt:\n    secret: test\nstorage:\n  provider: local\n  local:\n    rootDir: /tmp/trc\n",
+		"auth:\n  type: jwt\n  jwt:\n    secret: test\nstorage:\n  provider: local\n  local:\n    rootDir: /tmp/trc\n",
 		"TRC_CONFIG",
 	);
 
@@ -55,16 +64,25 @@ test("parseConfig parses raw yaml", () => {
 
 test("parseConfig parses raw json", () => {
 	const config = parseConfig(
-		'{"auth":{"jwt":{"secret":"test"}},"storage":{"provider":"local","local":{"rootDir":"/tmp/trc"}}}',
+		'{"auth":{"type":"jwt","jwt":{"secret":"test"}},"storage":{"provider":"local","local":{"rootDir":"/tmp/trc"}}}',
 		"TRC_CONFIG",
 	);
 
 	expect(config.storage.provider).toBe("local");
 });
 
+test("parseConfig parses shared-secret auth", () => {
+	const config = parseConfig(
+		"auth:\n  type: shared-secret\n  sharedSecret:\n    secret: test\nstorage:\n  provider: local\n  local:\n    rootDir: /tmp/trc\n",
+		"TRC_CONFIG",
+	);
+
+	expect(config.auth.type).toBe("shared-secret");
+});
+
 test("loadConfig parses json file", async () => {
 	const filePath = await writeTempConfig(
-		'{"auth":{"jwt":{"secret":"test"}},"storage":{"provider":"local","local":{"rootDir":"/tmp/trc"}}}',
+		'{"auth":{"type":"jwt","jwt":{"secret":"test"}},"storage":{"provider":"local","local":{"rootDir":"/tmp/trc"}}}',
 		"json",
 	);
 	const config = await loadConfig(filePath);
@@ -74,7 +92,7 @@ test("loadConfig parses json file", async () => {
 
 test("parseConfig parses s3 storage", () => {
 	const config = parseConfig(
-		"auth:\n  jwt:\n    secret: test\nstorage:\n  provider: s3\n  s3:\n    region: us-east-1\n    bucket: trc-cache\n    accessKeyId: test\n    secretAccessKey: test-secret\n",
+		"auth:\n  type: jwt\n  jwt:\n    secret: test\nstorage:\n  provider: s3\n  s3:\n    region: us-east-1\n    bucket: trc-cache\n    accessKeyId: test\n    secretAccessKey: test-secret\n",
 		"TRC_CONFIG",
 	);
 
@@ -102,7 +120,7 @@ test("parseConfig resolves s3 env vars", () => {
 
 	try {
 		const config = parseConfig(
-			"auth:\n  jwt:\n    secret: test\nstorage:\n  provider: s3\n  s3:\n    endpoint: $CLOUDFLARE_R2_ENDPOINT\n    region: $CLOUDFLARE_R2_REGION\n    bucket: trc-cache\n    accessKeyId: $CLOUDFLARE_ACCOUNT_ID\n    secretAccessKey: $CLOUDFLARE_API_TOKEN\n",
+			"auth:\n  type: jwt\n  jwt:\n    secret: test\nstorage:\n  provider: s3\n  s3:\n    endpoint: $CLOUDFLARE_R2_ENDPOINT\n    region: $CLOUDFLARE_R2_REGION\n    bucket: trc-cache\n    accessKeyId: $CLOUDFLARE_ACCOUNT_ID\n    secretAccessKey: $CLOUDFLARE_API_TOKEN\n",
 			"TRC_CONFIG",
 		);
 
@@ -124,21 +142,47 @@ test("parseConfig resolves s3 env vars", () => {
 	}
 });
 
+test("parseConfig resolves env interpolation for auth", () => {
+	const envBackup = clearEnvByPrefix(["TRC_", "STORAGE_"]);
+	process.env.TRC_TEST_AUTH_SECRET = "from-config-env";
+
+	try {
+		const config = parseConfig(
+			"auth:\n  type: jwt\n  jwt:\n    secret: $TRC_TEST_AUTH_SECRET\nstorage:\n  provider: local\n  local:\n    rootDir: /tmp/trc\n",
+			"TRC_CONFIG",
+		);
+		if (config.auth.type !== "jwt") {
+			throw new Error("Expected jwt auth");
+		}
+		expect(config.auth.jwt.secret).toBe("from-config-env");
+	} finally {
+		restoreEnvKeys(envBackup);
+	}
+});
+
 test("parseConfig applies env overrides", () => {
 	const envBackup = {
+		TRC_AUTH_TYPE: process.env.TRC_AUTH_TYPE,
 		TRC_AUTH_JWT_SECRET: process.env.TRC_AUTH_JWT_SECRET,
+		TRC_LOGGING_PRETTY: process.env.TRC_LOGGING_PRETTY,
+		TRC_LOGGING_FILE: process.env.TRC_LOGGING_FILE,
 		TRC_STORAGE_PROVIDER: process.env.TRC_STORAGE_PROVIDER,
 		STORAGE_LOCAL_ROOT_DIR: process.env.STORAGE_LOCAL_ROOT_DIR,
 		TRC_SERVER_PORT: process.env.TRC_SERVER_PORT,
 	};
+	process.env.TRC_AUTH_TYPE = "jwt";
 	process.env.TRC_AUTH_JWT_SECRET = "from-env";
+	process.env.TRC_LOGGING_PRETTY = "true";
+	process.env.TRC_LOGGING_FILE = "/tmp/trc.log";
 	process.env.TRC_STORAGE_PROVIDER = "local";
 	process.env.STORAGE_LOCAL_ROOT_DIR = "/tmp/env-trc";
 	process.env.TRC_SERVER_PORT = "4001";
 
 	try {
 		const config = parseConfig("{}", "TRC_CONFIG");
-
+		if (config.auth.type !== "jwt") {
+			throw new Error("Expected jwt auth");
+		}
 		expect(config.auth.jwt.secret).toBe("from-env");
 		expect(config.storage.provider).toBe("local");
 		if (config.storage.provider !== "local") {
@@ -146,8 +190,13 @@ test("parseConfig applies env overrides", () => {
 		}
 		expect(config.storage.local.rootDir).toBe("/tmp/env-trc");
 		expect(config.server.port).toBe(4001);
+		expect(config.logging.pretty).toBe(true);
+		expect(config.logging.file).toBe("/tmp/trc.log");
 	} finally {
+		process.env.TRC_AUTH_TYPE = envBackup.TRC_AUTH_TYPE;
 		process.env.TRC_AUTH_JWT_SECRET = envBackup.TRC_AUTH_JWT_SECRET;
+		process.env.TRC_LOGGING_PRETTY = envBackup.TRC_LOGGING_PRETTY;
+		process.env.TRC_LOGGING_FILE = envBackup.TRC_LOGGING_FILE;
 		process.env.TRC_STORAGE_PROVIDER = envBackup.TRC_STORAGE_PROVIDER;
 		process.env.STORAGE_LOCAL_ROOT_DIR = envBackup.STORAGE_LOCAL_ROOT_DIR;
 		process.env.TRC_SERVER_PORT = envBackup.TRC_SERVER_PORT;
@@ -155,24 +204,11 @@ test("parseConfig applies env overrides", () => {
 });
 
 test("serializeConfigJson outputs json", () => {
-	const envBackup = clearEnvKeys([
-		"TRC_SERVER_HOST",
-		"TRC_SERVER_PORT",
-		"TRC_LOGGING_LEVEL",
-		"TRC_AUTH_JWT_SECRET",
-		"TRC_STORAGE_PROVIDER",
-		"STORAGE_LOCAL_ROOT_DIR",
-		"STORAGE_S3_ENDPOINT",
-		"STORAGE_S3_REGION",
-		"STORAGE_S3_BUCKET",
-		"STORAGE_S3_ACCESS_KEY_ID",
-		"STORAGE_S3_SECRET_ACCESS_KEY",
-		"STORAGE_S3_FORCE_PATH_STYLE",
-	]);
+	const envBackup = clearEnvByPrefix(["TRC_", "STORAGE_"]);
 
 	try {
 		const config = parseConfig(
-			"auth:\n  jwt:\n    secret: test\nstorage:\n  provider: local\n  local:\n    rootDir: /tmp/trc\n",
+			"auth:\n  type: jwt\n  jwt:\n    secret: test\nstorage:\n  provider: local\n  local:\n    rootDir: /tmp/trc\n",
 			"TRC_CONFIG",
 		);
 		const output = serializeConfigJson(config);

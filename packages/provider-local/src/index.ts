@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, rename, stat, writeFile, readFile } from "node:fs/promises";
+import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -10,6 +10,7 @@ import type {
 	ArtifactMetadata,
 	ArtifactPutOptions,
 	ArtifactQueryResult,
+	ArtifactScope,
 	StorageProvider,
 } from "@trc/storage-core";
 
@@ -17,11 +18,32 @@ export type LocalProviderConfig = {
 	rootDir: string;
 };
 
-const artifactPath = (rootDir: string, hash: string): string =>
-	join(rootDir, hash);
+const scopeSegments = (scope?: ArtifactScope): [string, string] => {
+	const teamId = scope?.teamId?.trim();
+	const slug = scope?.slug?.trim();
+	return [
+		teamId && teamId.length > 0 ? teamId : "_",
+		slug && slug.length > 0 ? slug : "_",
+	];
+};
 
-const metadataPath = (rootDir: string, hash: string): string =>
-	join(rootDir, `${hash}.json`);
+const artifactPath = (
+	rootDir: string,
+	hash: string,
+	scope?: ArtifactScope,
+): string => {
+	const [teamId, slug] = scopeSegments(scope);
+	return join(rootDir, teamId, slug, hash);
+};
+
+const metadataPath = (
+	rootDir: string,
+	hash: string,
+	scope?: ArtifactScope,
+): string => {
+	const [teamId, slug] = scopeSegments(scope);
+	return join(rootDir, teamId, slug, `${hash}.json`);
+};
 
 const isNotFoundError = (error: unknown): boolean =>
 	error instanceof Error && "code" in error && error.code === "ENOENT";
@@ -29,9 +51,10 @@ const isNotFoundError = (error: unknown): boolean =>
 const readMetadata = async (
 	rootDir: string,
 	hash: string,
+	scope?: ArtifactScope,
 ): Promise<ArtifactMetadata | null> => {
 	try {
-		const raw = await readFile(metadataPath(rootDir, hash), "utf-8");
+		const raw = await readFile(metadataPath(rootDir, hash, scope), "utf-8");
 		return JSON.parse(raw) as ArtifactMetadata;
 	} catch (error) {
 		if (isNotFoundError(error)) {
@@ -75,17 +98,28 @@ export const createLocalProvider = (
 		await mkdir(rootDir, { recursive: true });
 	};
 
+	const ensureScopeDir = async (scope?: ArtifactScope): Promise<void> => {
+		const [teamId, slug] = scopeSegments(scope);
+		await mkdir(join(rootDir, teamId, slug), { recursive: true });
+	};
+
 	return {
-		async head(hash: string): Promise<ArtifactMetadata | null> {
-			return readMetadata(rootDir, hash);
+		async head(
+			hash: string,
+			scope?: ArtifactScope,
+		): Promise<ArtifactMetadata | null> {
+			return readMetadata(rootDir, hash, scope);
 		},
-		async get(hash: string): Promise<ArtifactInfo | null> {
-			const metadata = await readMetadata(rootDir, hash);
+		async get(
+			hash: string,
+			scope?: ArtifactScope,
+		): Promise<ArtifactInfo | null> {
+			const metadata = await readMetadata(rootDir, hash, scope);
 			if (!metadata) {
 				return null;
 			}
 
-			const filePath = artifactPath(rootDir, hash);
+			const filePath = artifactPath(rootDir, hash, scope);
 			try {
 				await stat(filePath);
 			} catch (error) {
@@ -101,17 +135,25 @@ export const createLocalProvider = (
 				body: toWebStream(stream),
 			};
 		},
-		async put(hash: string, options: ArtifactPutOptions): Promise<void> {
+		async put(
+			hash: string,
+			options: ArtifactPutOptions,
+			scope?: ArtifactScope,
+		): Promise<void> {
 			await ensureRootDir();
-			const filePath = artifactPath(rootDir, hash);
+			await ensureScopeDir(scope);
+			const filePath = artifactPath(rootDir, hash, scope);
 			await writeStreamAtomic(filePath, options.body);
 			const metadataJson = JSON.stringify(options.metadata, null, 2);
-			await writeAtomic(metadataPath(rootDir, hash), metadataJson);
+			await writeAtomic(metadataPath(rootDir, hash, scope), metadataJson);
 		},
-		async query(hashes: string[]): Promise<ArtifactQueryResult> {
+		async query(
+			hashes: string[],
+			scope?: ArtifactScope,
+		): Promise<ArtifactQueryResult> {
 			const entries = await Promise.all(
 				hashes.map(async (hash) => {
-					const metadata = await readMetadata(rootDir, hash);
+					const metadata = await readMetadata(rootDir, hash, scope);
 					return [hash, metadata] as const;
 				}),
 			);

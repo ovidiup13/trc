@@ -13,6 +13,7 @@ import type {
 	ArtifactMetadata,
 	ArtifactPutOptions,
 	ArtifactQueryResult,
+	ArtifactScope,
 	StorageProvider,
 } from "@trc/storage-core";
 
@@ -96,6 +97,14 @@ const parseMetadata = (
 	};
 };
 
+const keyForScope = (hash: string, scope?: ArtifactScope): string => {
+	const teamId = scope?.teamId?.trim();
+	const slug = scope?.slug?.trim();
+	const teamSegment = teamId && teamId.length > 0 ? teamId : "_";
+	const slugSegment = slug && slug.length > 0 ? slug : "_";
+	return `${teamSegment}/${slugSegment}/${hash}`;
+};
+
 const isNotFoundError = (error: unknown): boolean => {
 	if (!error || typeof error !== "object") {
 		return false;
@@ -112,6 +121,10 @@ const isNotFoundError = (error: unknown): boolean => {
 };
 
 export const createS3Provider = (config: S3ProviderConfig): StorageProvider => {
+	console.log("creating s3 provider", {
+		config,
+	});
+
 	const client = new S3Client({
 		region: config.region,
 		endpoint: config.endpoint,
@@ -124,12 +137,15 @@ export const createS3Provider = (config: S3ProviderConfig): StorageProvider => {
 
 	const bucket = config.bucket;
 
-	const head = async (hash: string): Promise<ArtifactMetadata | null> => {
+	const head = async (
+		hash: string,
+		scope?: ArtifactScope,
+	): Promise<ArtifactMetadata | null> => {
 		try {
 			const response = await client.send(
 				new HeadObjectCommand({
 					Bucket: bucket,
-					Key: hash,
+					Key: keyForScope(hash, scope),
 				}),
 			);
 			return parseMetadata(response.Metadata, response.ContentLength);
@@ -142,15 +158,21 @@ export const createS3Provider = (config: S3ProviderConfig): StorageProvider => {
 	};
 
 	return {
-		async head(hash: string): Promise<ArtifactMetadata | null> {
-			return head(hash);
+		async head(
+			hash: string,
+			scope?: ArtifactScope,
+		): Promise<ArtifactMetadata | null> {
+			return head(hash, scope);
 		},
-		async get(hash: string): Promise<ArtifactInfo | null> {
+		async get(
+			hash: string,
+			scope?: ArtifactScope,
+		): Promise<ArtifactInfo | null> {
 			try {
 				const response = await client.send(
 					new GetObjectCommand({
 						Bucket: bucket,
-						Key: hash,
+						Key: keyForScope(hash, scope),
 					}),
 				);
 				const metadata = parseMetadata(
@@ -171,7 +193,11 @@ export const createS3Provider = (config: S3ProviderConfig): StorageProvider => {
 				throw error;
 			}
 		},
-		async put(hash: string, options: ArtifactPutOptions): Promise<void> {
+		async put(
+			hash: string,
+			options: ArtifactPutOptions,
+			scope?: ArtifactScope,
+		): Promise<void> {
 			const bodyBuffer = await readWebStreamToBuffer(options.body);
 			const metadata: Record<string, string> = {
 				size: options.metadata.size.toString(),
@@ -185,16 +211,19 @@ export const createS3Provider = (config: S3ProviderConfig): StorageProvider => {
 			await client.send(
 				new PutObjectCommand({
 					Bucket: bucket,
-					Key: hash,
+					Key: keyForScope(hash, scope),
 					Body: bodyBuffer,
 					ContentLength: bodyBuffer.byteLength,
 					Metadata: metadata,
 				}),
 			);
 		},
-		async query(hashes: string[]): Promise<ArtifactQueryResult> {
+		async query(
+			hashes: string[],
+			scope?: ArtifactScope,
+		): Promise<ArtifactQueryResult> {
 			const entries = await Promise.all(
-				hashes.map(async (hash) => [hash, await head(hash)] as const),
+				hashes.map(async (hash) => [hash, await head(hash, scope)] as const),
 			);
 			return Object.fromEntries(entries);
 		},

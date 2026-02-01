@@ -1,10 +1,10 @@
 import type { TrcConfig } from "@trc/config";
+import type { Logger } from "@trc/logger";
+import { createLogger } from "@trc/logger";
 import { createErrorResponse } from "@trc/shared";
 import type { StorageProvider } from "@trc/storage-core";
 import { Hono, type MiddlewareHandler } from "hono";
 import { createAuthMiddleware } from "./auth";
-import type { Logger } from "./logger";
-import { createLogger } from "./logger";
 import { registerRoutes } from "./routes";
 import type { RouteDependencies } from "./routes/types";
 import { createStorageProvider } from "./storage";
@@ -19,9 +19,15 @@ const createDependencies = (
 ): AppDependencies => {
 	const storage: StorageProvider =
 		overrides.storage ?? createStorageProvider(config);
-	const logger: Logger = overrides.logger ?? createLogger(config.logging.level);
+	const logger: Logger =
+		overrides.logger ??
+		createLogger({
+			level: config.logging.level,
+			pretty: config.logging.pretty,
+			file: config.logging.file,
+		});
 	const authMiddleware =
-		overrides.authMiddleware ?? createAuthMiddleware(config.auth.jwt.secret);
+		overrides.authMiddleware ?? createAuthMiddleware(config.auth, logger);
 
 	return {
 		storage,
@@ -45,12 +51,15 @@ export const createApp = (
 		const start = performance.now();
 		await next();
 		const durationMs = Math.round(performance.now() - start);
-		logger.info({
-			method: context.req.method,
-			path: context.req.path,
-			status: context.res.status,
-			durationMs,
-		});
+		logger.info(
+			{
+				method: context.req.method,
+				path: context.req.path,
+				status: context.res.status,
+				durationMs,
+			},
+			"request",
+		);
 	});
 
 	app.use("*", authMiddleware);

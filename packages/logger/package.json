@@ -1,16 +1,18 @@
 {
-	"name": "@trc/e2e",
+	"name": "@trc/logger",
 	"version": "0.1.0",
 	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
 	"scripts": {
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome lint .",
 		"format": "biome format --write .",
-		"test": "echo 'skipped'",
-		"test:e2e": "vitest run --passWithNoTests src/*.e2e.test.ts",
-		"test:docker": "bun run test:e2e"
+		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
-		"jose": "^5.6.0"
+		"pino": "^9.5.0",
+		"pino-pretty": "^10.3.1"
 	}
 }

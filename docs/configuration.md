@@ -41,10 +41,18 @@ All fields are required unless marked optional. Defaults are listed explicitly.
 
 - `logging.level` (string, optional, default: `info`)
   - Allowed values: `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`
+- `logging.pretty` (boolean, optional, default: `true` when not `CI=true` and not `NODE_ENV=production`)
+- `logging.file` (string, optional)
+  - If set, logs are also written to this file path.
 
 ### `auth`
 
-- `auth.jwt.secret` (string, required)
+- `auth.type` (string, required)
+  - Allowed values: `jwt`, `shared-secret`
+- `auth.jwt.secret` (string, required when `auth.type` is `jwt`)
+- `auth.sharedSecret.secret` (string, required when `auth.type` is `shared-secret`)
+
+See [docs/authentication.md](./authentication.md) for details and examples.
 
 ### `storage`
 
@@ -58,6 +66,22 @@ Provider-specific configuration lives in the storage docs:
 
 ## Environment variables
 
+### Env interpolation in config files
+
+Any string value in `trc.yaml` or `trc.json` can reference an environment variable using `$NAME`.
+Interpolation happens before schema validation and env overrides.
+
+Example:
+
+```yaml
+auth:
+  type: jwt
+  jwt:
+    secret: $TRC_AUTH_JWT_SECRET
+```
+
+If an interpolated env var is missing, config parsing fails with a clear error.
+
 ### TRC overrides
 
 These override the corresponding config fields:
@@ -65,7 +89,11 @@ These override the corresponding config fields:
 - `TRC_SERVER_HOST` -> `server.host`
 - `TRC_SERVER_PORT` -> `server.port`
 - `TRC_LOGGING_LEVEL` -> `logging.level`
+- `TRC_LOGGING_PRETTY` -> `logging.pretty`
+- `TRC_LOGGING_FILE` -> `logging.file`
+- `TRC_AUTH_TYPE` -> `auth.type`
 - `TRC_AUTH_JWT_SECRET` -> `auth.jwt.secret`
+- `TRC_AUTH_SHARED_SECRET` -> `auth.sharedSecret.secret`
 - `TRC_STORAGE_PROVIDER` -> `storage.provider`
 
 ### Storage overrides
@@ -83,7 +111,4 @@ If you set storage provider env vars without setting `TRC_STORAGE_PROVIDER`, TRC
 
 ### Storage env interpolation in config files
 
-Interpolation rules and examples live in the provider docs:
-
-- Local filesystem: [docs/storage/local.md](./storage/local.md)
-- S3-compatible: [docs/storage/s3.md](./storage/s3.md)
+Storage config fields follow the same `$NAME` interpolation rules described above.
