@@ -14,6 +14,7 @@ services:
     build:
       context: ../..
       dockerfile: packages/e2e/docker/Dockerfile.runner
+    user: "${E2E_UID:-0}:${E2E_GID:-0}"
     depends_on:
       - trc
     volumes:

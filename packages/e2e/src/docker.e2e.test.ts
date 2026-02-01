@@ -9,6 +9,7 @@ import {
 	rm,
 	writeFile,
 } from "node:fs/promises";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,6 +45,24 @@ const waitFor = async (
 		await new Promise((resolveDelay) => setTimeout(resolveDelay, delayMs));
 	}
 	throw new Error("Server did not become ready");
+};
+
+const getAvailablePort = async (): Promise<number> => {
+	const server = createServer();
+	await new Promise<void>((resolve, reject) => {
+		server.once("error", reject);
+		server.listen(0, "127.0.0.1", () => resolve());
+	});
+	const address = server.address();
+	const port =
+		typeof address === "object" && address ? address.port : undefined;
+	await new Promise<void>((resolve, reject) => {
+		server.close((error) => (error ? reject(error) : resolve()));
+	});
+	if (!port) {
+		throw new Error("Failed to allocate port");
+	}
+	return port;
 };
 
 const execLogged = async (
@@ -145,7 +164,9 @@ test.skipIf(!(await isDockerAvailable()))(
 		const composeEnvPath = join(runDir, "compose.env");
 		const composeFile = join(rootDir, "packages/e2e/docker-compose.e2e.yml");
 		const secret = "e2e-secret";
-		const hostPort = 3123;
+		const hostPort = await getAvailablePort();
+		const uid = typeof process.getuid === "function" ? process.getuid() : 0;
+		const gid = typeof process.getgid === "function" ? process.getgid() : 0;
 		const now = new Date();
 		const pad = (value: number): string => value.toString().padStart(2, "0");
 		const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
@@ -204,6 +225,8 @@ test.skipIf(!(await isDockerAvailable()))(
 			E2E_EXAMPLE_DIR: exampleDir,
 			E2E_CACHE_DIR: cacheDir,
 			E2E_TURBO_TOKEN: token,
+			E2E_UID: uid.toString(),
+			E2E_GID: gid.toString(),
 		});
 
 		try {
