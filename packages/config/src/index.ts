@@ -21,7 +21,7 @@ const localStorageSchema = z.object({
 });
 
 const s3StorageSchema = z.object({
-	endpoint: z.string().url().optional(),
+	endpoint: z.url().optional(),
 	region: z.string().min(1),
 	bucket: z.string().min(1),
 	accessKeyId: z.string().min(1),
@@ -40,11 +40,10 @@ const storageSchema = z.discriminatedUnion("provider", [
 		provider: z.literal("local"),
 		local: localStorageSchema,
 	}),
-	// coming soon
-	// z.object({
-	// 	provider: z.literal("s3"),
-	// 	s3: s3StorageSchema,
-	// }),
+	z.object({
+		provider: z.literal("s3"),
+		s3: s3StorageSchema,
+	}),
 	// z.object({
 	// 	provider: z.literal("artifactory"),
 	// 	artifactory: artifactoryStorageSchema,

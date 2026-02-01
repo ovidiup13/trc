@@ -6,8 +6,9 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome lint .",
 		"format": "biome format --write .",
-		"test": "vitest run --passWithNoTests",
-		"test:docker": "vitest run --passWithNoTests src/docker.e2e.test.ts"
+		"test": "vitest run --passWithNoTests --exclude src/*.e2e.test.ts",
+		"test:e2e": "vitest run --passWithNoTests src/*.e2e.test.ts",
+		"test:docker": "bun run test:e2e"
 	},
 	"dependencies": {
 		"jose": "^5.6.0"

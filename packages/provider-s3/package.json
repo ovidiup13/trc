@@ -12,6 +12,7 @@
 		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
+		"@aws-sdk/client-s3": "^3.758.0",
 		"@trc/storage-core": "workspace:*"
 	}
 }

@@ -39,10 +39,9 @@ test("resolveConfigInput uses TRC_CONFIG_PATH", () => {
 });
 
 test("loadResolvedConfig parses TRC_CONFIG", async () => {
-	const resolved = resolveConfigInput(
-		{},
-		{ TRC_CONFIG: sampleConfig } as NodeJS.ProcessEnv,
-	);
+	const resolved = resolveConfigInput({}, {
+		TRC_CONFIG: sampleConfig,
+	} as NodeJS.ProcessEnv);
 	const config = await loadResolvedConfig(resolved.input);
 
 	expect(config.storage.provider).toBe("local");
@@ -50,10 +49,9 @@ test("loadResolvedConfig parses TRC_CONFIG", async () => {
 
 test("loadResolvedConfig loads config from path", async () => {
 	const filePath = await writeTempConfig(sampleConfig);
-	const resolved = resolveConfigInput(
-		{},
-		{ TRC_CONFIG_PATH: filePath } as NodeJS.ProcessEnv,
-	);
+	const resolved = resolveConfigInput({}, {
+		TRC_CONFIG_PATH: filePath,
+	} as NodeJS.ProcessEnv);
 	const config = await loadResolvedConfig(resolved.input);
 
 	expect(config.storage.provider).toBe("local");

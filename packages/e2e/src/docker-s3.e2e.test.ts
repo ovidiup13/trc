@@ -148,29 +148,59 @@ const tailLog = async (filePath: string, limit = 8000): Promise<string> => {
 	return contents.slice(-limit);
 };
 
+const parseMinioList = (output: string): Set<string> => {
+	const keys = new Set<string>();
+	for (const line of output.split("\n")) {
+		const trimmed = line.trim();
+		if (!trimmed) {
+			continue;
+		}
+		try {
+			const entry = JSON.parse(trimmed) as {
+				type?: string;
+				key?: string;
+				name?: string;
+			};
+			if (entry.type !== "file") {
+				continue;
+			}
+			const key = entry.key ?? entry.name;
+			if (key) {
+				keys.add(key);
+			}
+		} catch {
+			// Ignore non-JSON lines.
+		}
+	}
+	return keys;
+};
+
 test.skipIf(!(await isDockerAvailable()))(
-	"docker e2e",
+	"docker e2e (s3)",
 	async () => {
 		const artifactsRoot = join(rootDir, ".e2e-artifacts");
 		await mkdir(artifactsRoot, { recursive: true });
 
-		const runDir = await mkdtemp(join(tmpdir(), "trc-e2e-"));
+		const runDir = await mkdtemp(join(tmpdir(), "trc-e2e-s3-"));
 		const runId = runDir.split("-").pop() ?? "run";
 		const configDir = join(runDir, "config");
 		const exampleDir = join(runDir, "examples", "basic");
 		const composeEnvPath = join(runDir, "compose.env");
-		const composeFile = join(rootDir, "packages/e2e/docker-compose.e2e.yml");
+		const composeFile = join(rootDir, "packages/e2e/docker-compose.s3.e2e.yml");
 		const secret = "e2e-secret";
-		const hostPort = await getAvailablePort();
-		const uid = typeof process.getuid === "function" ? process.getuid() : 0;
-		const gid = typeof process.getgid === "function" ? process.getgid() : 0;
+		const s3AccessKey = "minio-access";
+		const s3SecretKey = "minio-secret";
 		const now = new Date();
 		const pad = (value: number): string => value.toString().padStart(2, "0");
 		const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-		const artifactsRunDir = join(artifactsRoot, `run-${timestamp}-${runId}`);
-		const storageDir = join(artifactsRunDir, "server-storage");
+		const artifactsRunDir = join(artifactsRoot, `run-s3-${timestamp}-${runId}`);
 		const cacheDir = join(artifactsRunDir, "runner-cache");
-		const projectName = `trc-e2e-${timestamp}`;
+		const bucket = `trc-cache-${timestamp}`;
+		const s3DataDir = join(runDir, "minio-data");
+		const hostPort = await getAvailablePort();
+		const uid = typeof process.getuid === "function" ? process.getuid() : 0;
+		const gid = typeof process.getgid === "function" ? process.getgid() : 0;
+		const projectName = `trc-e2e-s3-${timestamp}`;
 		const logPath = join(artifactsRunDir, "docker-compose.log");
 		const composeArgs = [
 			"compose",
@@ -186,22 +216,22 @@ test.skipIf(!(await isDockerAvailable()))(
 			runDir,
 			artifactsRunDir,
 			configDir,
-			storageDir,
 			cacheDir,
 			exampleDir,
 			composeFile,
 			composeEnvPath,
 			projectName,
 			logPath,
+			bucket,
 		});
 
 		let success = false;
 
 		await mkdir(configDir, { recursive: true });
 		await mkdir(artifactsRunDir, { recursive: true });
-		await mkdir(storageDir, { recursive: true });
 		await mkdir(cacheDir, { recursive: true });
 		await mkdir(join(runDir, "examples"), { recursive: true });
+		await mkdir(s3DataDir, { recursive: true });
 
 		await cp(join(rootDir, "examples/basic"), exampleDir, { recursive: true });
 		await rm(join(exampleDir, ".turbo"), { recursive: true, force: true });
@@ -211,7 +241,7 @@ test.skipIf(!(await isDockerAvailable()))(
 		});
 		await updateTurboConfig(join(exampleDir, "turbo.json"), "http://trc:3000");
 
-		const configContents = `server:\n  host: 0.0.0.0\n  port: 3000\nlogging:\n  level: info\nauth:\n  jwt:\n    secret: ${secret}\nstorage:\n  provider: local\n  local:\n    rootDir: /data\n`;
+		const configContents = `server:\n  host: 0.0.0.0\n  port: 3000\nlogging:\n  level: info\nauth:\n  jwt:\n    secret: ${secret}\nstorage:\n  provider: s3\n  s3:\n    endpoint: http://minio:9000\n    region: us-east-1\n    bucket: ${bucket}\n    accessKeyId: ${s3AccessKey}\n    secretAccessKey: ${s3SecretKey}\n    forcePathStyle: true\n`;
 		await writeFile(join(configDir, "trc.yaml"), configContents, "utf-8");
 
 		const token = await new SignJWT({ sub: "e2e" })
@@ -221,12 +251,14 @@ test.skipIf(!(await isDockerAvailable()))(
 		await writeEnvFile(composeEnvPath, {
 			E2E_TRC_PORT: hostPort.toString(),
 			E2E_CONFIG_DIR: configDir,
-			E2E_STORAGE_DIR: storageDir,
 			E2E_EXAMPLE_DIR: exampleDir,
 			E2E_CACHE_DIR: cacheDir,
 			E2E_TURBO_TOKEN: token,
 			E2E_UID: uid.toString(),
 			E2E_GID: gid.toString(),
+			E2E_S3_ACCESS_KEY: s3AccessKey,
+			E2E_S3_SECRET_KEY: s3SecretKey,
+			E2E_S3_DATA_DIR: s3DataDir,
 		});
 
 		try {
@@ -251,6 +283,55 @@ test.skipIf(!(await isDockerAvailable()))(
 				console.info(buildLog.length > 8000 ? buildLog.slice(-8000) : buildLog);
 				throw error;
 			}
+
+			await execLogged("docker", [...composeArgs, "up", "-d", "minio"], {
+				cwd: rootDir,
+				logPath,
+			});
+
+			await waitFor(
+				async () => {
+					try {
+						await exec(
+							"docker",
+							[
+								...composeArgs,
+								"run",
+								"--rm",
+								"minio-client",
+								"-c",
+								`mc alias set s3 http://minio:9000 ${s3AccessKey} ${s3SecretKey} >/dev/null && mc ls s3 >/dev/null`,
+							],
+							{
+								cwd: rootDir,
+								maxBuffer: 5 * 1024 * 1024,
+							},
+						);
+						return true;
+					} catch {
+						return false;
+					}
+				},
+				40,
+				500,
+			);
+
+			await execLogged(
+				"docker",
+				[
+					...composeArgs,
+					"run",
+					"--rm",
+					"minio-client",
+					"-c",
+					`mc alias set s3 http://minio:9000 ${s3AccessKey} ${s3SecretKey} >/dev/null && mc mb -p s3/${bucket}`,
+				],
+				{
+					cwd: rootDir,
+					logPath,
+				},
+			);
+
 			await execLogged("docker", [...composeArgs, "up", "-d", "trc"], {
 				cwd: rootDir,
 				logPath,
@@ -293,12 +374,23 @@ test.skipIf(!(await isDockerAvailable()))(
 				logPath,
 			});
 
-			const storageFiles = await listFiles(storageDir);
-			const storageHashes = new Set(
-				storageFiles.filter(
-					(name) => !name.endsWith(".json") && !name.endsWith(".tmp"),
-				),
+			const listResult = await execLogged(
+				"docker",
+				[
+					...composeArgs,
+					"run",
+					"--rm",
+					"minio-client",
+					"-c",
+					`mc alias set s3 http://minio:9000 ${s3AccessKey} ${s3SecretKey} >/dev/null && mc ls --recursive --json s3/${bucket}`,
+				],
+				{
+					cwd: rootDir,
+					logPath,
+				},
 			);
+
+			const storageHashes = parseMinioList(listResult.stdout);
 
 			const cacheRoot = join(cacheDir, "cache");
 			const cacheFiles = await listFiles(cacheRoot);

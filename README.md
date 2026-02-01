@@ -8,7 +8,7 @@ It supports the following storage providers out of the box:
 
 - [x] Local filesystem
 - [ ] In-memory (for testing purposes)
-- [ ] S3-compatible object storage
+- [x] S3-compatible object storage
 - [ ] Artifactory / JFrog
 - more to come...
 
@@ -42,6 +42,31 @@ npx trc -c apps/server/trc.example.yaml
 ```
 
 This starts a TRC server at `http://localhost:3000` using the example config file located at `apps/server/trc.example.yaml`.
+
+## Storage providers
+
+Local filesystem:
+
+```yaml
+storage:
+  provider: local
+  local:
+    rootDir: /tmp/cache/turbo
+```
+
+S3-compatible storage:
+
+```yaml
+storage:
+  provider: s3
+  s3:
+    endpoint: http://localhost:9000
+    region: us-east-1
+    bucket: trc-cache
+    accessKeyId: your-access-key
+    secretAccessKey: your-secret-key
+    forcePathStyle: true
+```
 
 ## CLI
 

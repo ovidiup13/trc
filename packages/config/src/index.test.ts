@@ -30,3 +30,16 @@ test("parseConfig parses raw yaml", () => {
 
 	expect(config.storage.provider).toBe("local");
 });
+
+test("parseConfig parses s3 storage", () => {
+	const config = parseConfig(
+		"auth:\n  jwt:\n    secret: test\nstorage:\n  provider: s3\n  s3:\n    region: us-east-1\n    bucket: trc-cache\n    accessKeyId: test\n    secretAccessKey: test-secret\n",
+		"TRC_CONFIG",
+	);
+
+	expect(config.storage.provider).toBe("s3");
+	if (config.storage.provider !== "s3") {
+		throw new Error("Expected s3 storage provider");
+	}
+	expect(config.storage.s3.forcePathStyle).toBe(false);
+});

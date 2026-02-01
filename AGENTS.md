@@ -19,7 +19,9 @@ This repository hosts TRC (Turborepo Remote Cache). Use the notes below when wor
 
 - Prefer minimal, targeted changes with clear intent.
 - Keep config and example files in sync when changing defaults.
-- Document new CLI flags or config fields in `README.md`.
+- Document new CLI flags or config fields in `README.md`
+- Validate changes with `bun validate`
+- Remove unused code and modules proactively.
 
 ## Tests and checks
 

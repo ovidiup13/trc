@@ -15,6 +15,7 @@
 		"@hono/node-server": "^1.13.1",
 		"@trc/config": "workspace:*",
 		"@trc/provider-local": "workspace:*",
+		"@trc/provider-s3": "workspace:*",
 		"@trc/shared": "workspace:*",
 		"@trc/storage-core": "workspace:*",
 		"hono": "^4.6.0",

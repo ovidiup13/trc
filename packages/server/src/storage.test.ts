@@ -1,8 +1,8 @@
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { expect, test } from "vitest";
 import type { TrcConfig } from "@trc/config";
+import { expect, test } from "vitest";
 import { createStorageProvider } from "./storage";
 
 const createConfig = async (): Promise<TrcConfig> => {
@@ -31,6 +31,22 @@ const createConfig = async (): Promise<TrcConfig> => {
 
 test("createStorageProvider returns local provider", async () => {
 	const config = await createConfig();
+	const provider = createStorageProvider(config);
+	expect(provider).toBeDefined();
+});
+
+test("createStorageProvider returns s3 provider", async () => {
+	const config = await createConfig();
+	config.storage = {
+		provider: "s3",
+		s3: {
+			region: "us-east-1",
+			bucket: "trc-cache",
+			accessKeyId: "test",
+			secretAccessKey: "test-secret",
+			forcePathStyle: true,
+		},
+	};
 	const provider = createStorageProvider(config);
 	expect(provider).toBeDefined();
 });
