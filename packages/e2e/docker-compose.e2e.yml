@@ -1,0 +1,23 @@
+services:
+  trc:
+    build:
+      context: ../..
+      dockerfile: packages/e2e/docker/Dockerfile.server
+    ports:
+      - "${E2E_TRC_PORT}:3000"
+    volumes:
+      - "${E2E_CONFIG_DIR}:/config"
+      - "${E2E_STORAGE_DIR}:/data"
+    environment:
+      TRC_CONFIG: /config/trc.yaml
+  runner:
+    build:
+      context: ../..
+      dockerfile: packages/e2e/docker/Dockerfile.runner
+    depends_on:
+      - trc
+    volumes:
+      - "${E2E_EXAMPLE_DIR}:/workspace"
+      - "${E2E_CACHE_DIR}:/workspace/.turbo"
+    environment:
+      TURBO_TOKEN: "${E2E_TURBO_TOKEN}"
