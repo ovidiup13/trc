@@ -2,7 +2,7 @@ import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import { createErrorResponse } from "@trc/shared";
 import type { ApiJsonResponse, ApiRequestBody } from "@trc/shared";
 import type { ArtifactMetadata } from "@trc/storage-core";
-import type { Context, Hono } from "hono";
+import type { Hono } from "hono";
 import type { RouteDependencies } from "./types";
 import { badRequest, isValidHash, toArtifactHeaders } from "./utils";
 
@@ -17,27 +17,22 @@ export const registerArtifactRoutes = (
 		return context.json(response);
 	});
 
-	target.on("HEAD", "/artifacts/:hash", async (context: Context) => {
-		const hash = context.req.param("hash");
-		if (!isValidHash(hash)) {
-			return badRequest("Invalid artifact hash");
-		}
-		const metadata = await storage.head(hash);
-		if (!metadata) {
-			return context.json(
-				createErrorResponse("not_found", "Artifact not found"),
-				404,
-			);
-		}
-
-		const headers = toArtifactHeaders(metadata);
-		return new Response(null, { status: 200, headers });
-	});
-
 	target.get("/artifacts/:hash", async (context) => {
 		const hash = context.req.param("hash");
 		if (!isValidHash(hash)) {
 			return badRequest("Invalid artifact hash");
+		}
+		if (context.req.method === "HEAD") {
+			const metadata = await storage.head(hash);
+			if (!metadata) {
+				return context.json(
+					createErrorResponse("not_found", "Artifact not found"),
+					404,
+				);
+			}
+
+			const headers = toArtifactHeaders(metadata);
+			return new Response(null, { status: 200, headers });
 		}
 		const artifact = await storage.get(hash);
 		if (!artifact?.body) {
