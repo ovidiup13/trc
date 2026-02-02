@@ -10,9 +10,9 @@
 		"test:e2e": "vitest run --passWithNoTests src/*.e2e.test.ts",
 		"test:docker": "bun run test:e2e",
 		"e2e": "bun run test:e2e",
-		"e2e:prep": "bun run build:runner && bun run build:server",
-		"build:runner": "docker build -f docker/Dockerfile.runner -t trc-e2e-runner:latest ../..",
-		"build:server": "docker build -f docker/Dockerfile.server -t trc-e2e-server:latest ../.."
+		"e2e:prep": "sh ./scripts/e2e-prep.sh",
+		"build:runner": "sh ./scripts/build-runner.sh",
+		"build:server": "sh ./scripts/build-server.sh"
 	},
 	"dependencies": {
 		"jose": "^5.6.0"

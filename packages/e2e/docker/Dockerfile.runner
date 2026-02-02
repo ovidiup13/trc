@@ -4,7 +4,7 @@ WORKDIR /workspace
 
 COPY examples /workspace/examples
 WORKDIR /workspace/examples/basic
-RUN bun install --no-save
+RUN --mount=type=cache,target=/root/.bun bun install --no-save
 RUN chmod -R a+rwX /workspace/examples
 
 COPY packages/e2e/docker/runner.sh /usr/local/bin/runner.sh

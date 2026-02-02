@@ -4,7 +4,7 @@ WORKDIR /repo
 
 COPY . .
 
-RUN bun install --no-save
+RUN --mount=type=cache,target=/root/.bun bun install --no-save
 RUN bun build apps/server/src/index.ts --compile --outfile /repo/dist/trc-server
 
 FROM gcr.io/distroless/base-debian12
